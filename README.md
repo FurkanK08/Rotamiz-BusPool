@@ -1,22 +1,24 @@
-# Rotamız 🚗
+# Rotamız-BusPool 🚐
 
-**Rotamız**, paylaşımlı yolculuk deneyimini kolaylaştıran modern bir mobil uygulama. Sürücüler ve yolcular için gerçek zamanlı konum takibi, güvenli kimlik doğrulama ve kullanıcı dostu arayüz sunar.
+**Rotamız-BusPool**, servis araçları için geliştirilmiş modern bir takip ve yönetim sistemi. Kurumsal servisler, okul servisleri ve personel taşımacılığı için gerçek zamanlı konum takibi, güvenli kimlik doğrulama ve kullanıcı dostu arayüz sunar.
 
 ## 🎯 Özellikler
 
 ### Sürücü Özellikleri
-- 🗺️ İnteraktif harita ile servis oluşturma
-- 📍 Kalkış ve varış noktası belirleme
-- 👥 Yolcu isteklerini yönetme
-- 🚦 Gerçek zamanlı yolculuk takibi
-- ⏱️ Tahmini varış süresi hesaplama
+- 🗺️ İnteraktif harita ile servis rotası oluşturma
+- 📍 Durak noktalarını belirleme ve yönetme
+- 👥 Yolcu listesi ve devamsızlık takibi
+- 🚦 Gerçek zamanlı konum paylaşımı
+- ⏱️ Tahmini varış süresi ve rota optimizasyonu
+- 🔔 Yolculara otomatik bildirimler
 
-### Yolcu Özelliklikleri
-- 🔍 Aktif servisleri arama ve görüntüleme
-- 📲 Servise katılma istekleri gönderme
-- 🗺️ Kendi konumunu harita üzerinde belirleme
-- 👁️ Canlı sürücü ve servis takibi
-- 🔔 Gerçek zamanlı bildirimler
+### Yolcu Özellikleri
+- 🔍 Atanan servisi görüntüleme ve takip etme
+- 📲 Devamsızlık bildirimi gönderme (servise binmeyecek)
+- 🗺️ Biniş konumunu harita üzerinde belirleme
+- 👁️ Canlı sürücü konumu ve rotayı takip
+- 🔔 Servis yaklaştığında bildirim alma
+- ⏰ Tahmini varış süresini görüntüleme
 
 ### Güvenlik
 - 🔐 SMS tabanlı OTP kimlik doğrulama
@@ -77,13 +79,15 @@ Expo uygulamasını kullanarak QR kodu tarayın veya emulator/simulator'de çal�
 1. **Kayıt/Giriş**: Telefon numaranızla giriş yapın, SMS ile gelen OTP kodunu girin
 2. **Rol Seçimi**: Sürücü veya Yolcu rolünü seçin
 3. **Sürücü İseniz**: 
-   - Harita üzerinde kalkış ve varış noktası belirleyin
-   - Servis detaylarını girin (kapasite, tarih/saat)
-   - Servisi oluşturun ve yolcu isteklerini bekleyin
+   - Harita üzerinde servis rotasını ve durak noktalarını belirleyin
+   - Servis detaylarını girin (kapasite, tarih/saat, rota bilgisi)
+   - Servisi başlatın ve yolcuları takip edin
+   - Yolcu devamsızlıklarını not alın
 4. **Yolcu İseniz**:
-   - Aktif servisleri görüntüleyin
-   - Uygun bir servise katılma isteği gönderin
-   - Onaylandıktan sonra canlı takip yapın
+   - Atanan servisinizi görüntüleyin
+   - Servise binmeyecekseniz devamsızlık bildirin
+   - Sürücünüzün konumunu canlı takip edin
+   - Tahmini varış süresini görün
 
 ## 📁 Proje Yapısı
 
