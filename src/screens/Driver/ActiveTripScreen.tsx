@@ -88,6 +88,22 @@ export const ActiveTripScreen = () => {
             setElapsedSeconds(prev => prev + 1);
         }, 1000);
 
+        const loadServiceData = async () => {
+            try {
+                // Fetch Service Details (Passengers & Attendance)
+                const services = await api.services.getDriverServices(driverId);
+                const currentService = services.find((s: any) => s._id === serviceId || s.id === serviceId);
+
+                if (currentService) {
+                    console.log('✅ Initial Service Data Loaded. Passengers:', currentService.passengers?.length);
+                    setPassengers(currentService.passengers || []);
+                    setAttendance(currentService.attendance || []);
+                }
+            } catch (e) {
+                console.log("Initial data load error:", e);
+            }
+        };
+
         const startBackgroundTracking = async () => {
             // 1. Permissions
             const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
@@ -107,18 +123,15 @@ export const ActiveTripScreen = () => {
 
             // 2. Initial Location & Service Data
             try {
+                // Try last known first for immediate UI
+                const lastKnown = await Location.getLastKnownPositionAsync({});
+                if (lastKnown) {
+                    setLocation(lastKnown);
+                }
+
+                // Get fresh for accuracy
                 const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
                 setLocation(loc);
-
-                // Fetch Service Details (Passengers & Attendance)
-                const services = await api.services.getDriverServices(driverId);
-                const currentService = services.find((s: any) => s._id === serviceId || s.id === serviceId);
-
-                if (currentService) {
-                    setPassengers(currentService.passengers || []);
-                    // Initialize attendance from backend or default
-                    setAttendance(currentService.attendance || []);
-                }
 
             } catch (e) {
                 console.log('Initial setup error:', e);
@@ -168,8 +181,7 @@ export const ActiveTripScreen = () => {
             }
         };
 
-        startBackgroundTracking();
-
+        loadServiceData(); // Call immediately
         startBackgroundTracking();
 
         // 6. Listen for Passenger Updates
@@ -226,9 +238,31 @@ export const ActiveTripScreen = () => {
 
         checkSimulation();
 
+        // Polling for Service Updates (incase new passengers join)
+        const pollInterval = setInterval(async () => {
+            try {
+                const services = await api.services.getDriverServices(driverId);
+                const current = services.find((s: any) => s._id === serviceId);
+                if (current) {
+                    // Update passengers if changed
+                    if (JSON.stringify(current.passengers) !== JSON.stringify(passengers)) {
+                        console.log('👥 Passenger list updated:', current.passengers.length);
+                        setPassengers(current.passengers || []);
+                    }
+                    // Update attendance if changed (and not locally modified pending save - simplified here)
+                    if (JSON.stringify(current.attendance) !== JSON.stringify(attendance)) {
+                        setAttendance(current.attendance || []);
+                    }
+                }
+            } catch (e) {
+                console.log('Service poll error:', e);
+            }
+        }, 10000); // Poll every 10 seconds
+
         // Cleanup
         return () => {
             clearInterval(timerInterval);
+            clearInterval(pollInterval);
             if (simInterval) clearInterval(simInterval);
             socketService.disconnect();
 
@@ -238,7 +272,7 @@ export const ActiveTripScreen = () => {
                 }
             });
         };
-    }, []);
+    }, []); // Check dependencies carefully. Effectively empty here as we use refs/fresh fetches inside.
 
     const formatDuration = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
