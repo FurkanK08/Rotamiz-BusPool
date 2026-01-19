@@ -27,11 +27,33 @@ export const PassengerTrackingScreen = () => {
     const [userLocation, setUserLocation] = useState<any>(null);
 
     // Get passenger's own location
+    // Get passenger's own location
     useEffect(() => {
         const getPassengerLoc = async () => {
             try {
+                // 1. Try to get from User Profile first (fastest & most accurate for pickup)
+                const { tokenService } = require('../../services/api');
+                const user = await tokenService.getUser();
+                if (user?.pickupLocation) {
+                    setUserLocation(user.pickupLocation);
+                    setPassengerLocation(user.pickupLocation);
+
+                    // If we have saved location, we might not need to force GPS immediately, 
+                    // but let's try to get live GPS in background for "Blue Dot" accuracy if they move.
+                }
+
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
+                    // 2. Try Last Known (fast)
+                    const lastKnown = await Location.getLastKnownPositionAsync({});
+                    if (lastKnown && !user?.pickupLocation) {
+                        setPassengerLocation({
+                            latitude: lastKnown.coords.latitude,
+                            longitude: lastKnown.coords.longitude
+                        });
+                    }
+
+                    // 3. Get Fresh GPS
                     const loc = await Location.getCurrentPositionAsync({});
                     setPassengerLocation({
                         latitude: loc.coords.latitude,
@@ -39,16 +61,9 @@ export const PassengerTrackingScreen = () => {
                     });
                 }
             } catch (e) {
-                console.log('Location error:', e);
-            }
-
-            // Also load from user profile
-            const { tokenService } = require('../../services/api');
-            const user = await tokenService.getUser();
-            if (user?.pickupLocation) {
-                setUserLocation(user.pickupLocation);
-                if (!passengerLocation) {
-                    setPassengerLocation(user.pickupLocation);
+                // Sadece geliştirme ortamında veya hiç konum bulunamadıysa logla
+                if (!passengerLocation && !userLocation) {
+                    console.log('Location fetch failed (using defaults/fallback).');
                 }
             }
         };
@@ -224,14 +239,18 @@ export const PassengerTrackingScreen = () => {
     };
 
     const zoomToSelf = () => {
-        if (mapRef.current && passengerLocation) {
+        if (!passengerLocation) {
+            Alert.alert('Hata', 'Konumunuz henüz belirlenemedi.');
+            return;
+        }
+        if (mapRef.current) {
             try {
                 const camera = {
                     center: {
                         latitude: passengerLocation.latitude,
                         longitude: passengerLocation.longitude,
                     },
-                    zoom: 15,
+                    zoom: 17, // Closer zoom for self
                     pitch: 0,
                 };
                 mapRef.current.animateCamera(camera, { duration: 500 });
@@ -286,11 +305,11 @@ export const PassengerTrackingScreen = () => {
                             </View>
                         </MapMarker>
 
-                        {/* Passenger's Own Location */}
+                        {/* Passenger's Own Location (Blue Dot Style) */}
                         {passengerLocation && (
-                            <MapMarker coordinate={passengerLocation}>
-                                <View style={styles.passengerMarker}>
-                                    <Text style={{ fontSize: 20 }}>📍</Text>
+                            <MapMarker coordinate={passengerLocation} zIndex={2}>
+                                <View style={styles.myLocationOuter}>
+                                    <View style={styles.myLocationInner} />
                                 </View>
                             </MapMarker>
                         )}
@@ -416,12 +435,28 @@ const styles = StyleSheet.create({
         borderColor: COLORS.primary,
         ...SHADOWS.medium,
     },
-    passengerMarker: {
-        backgroundColor: COLORS.white,
-        padding: 5,
-        borderRadius: 20,
+    // New GPS Style Marker
+    myLocationOuter: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(0, 122, 255, 0.3)', // Semi-transparent blue
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(0, 122, 255, 0.5)',
+    },
+    myLocationInner: {
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: '#007AFF', // Solid iOS blue
         borderWidth: 2,
-        borderColor: COLORS.success,
+        borderColor: 'white',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.3,
+        shadowRadius: 2,
     },
     destinationMarker: {
         backgroundColor: COLORS.white,

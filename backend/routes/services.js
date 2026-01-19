@@ -64,7 +64,7 @@ router.get('/driver/:driverId', async (req, res) => {
 // @desc    Join a service via code
 // @access  Private (Passenger)
 router.post('/join', async (req, res) => {
-    const { passengerId, code } = req.body;
+    const { passengerId, code, pickupLocation } = req.body;
 
     if (!passengerId || !code) {
         return res.status(400).json({ msg: 'Please provide valid data' });
@@ -84,6 +84,16 @@ router.post('/join', async (req, res) => {
 
         service.passengers.push(passengerId);
         await service.save();
+
+        // Save pickup location to user profile if provided
+        if (pickupLocation && pickupLocation.latitude && pickupLocation.longitude) {
+            await User.findByIdAndUpdate(
+                passengerId,
+                { pickupLocation },
+                { new: true }
+            );
+            console.log(`Pickup location saved for user ${passengerId}:`, pickupLocation);
+        }
 
         // Fetch fresh service with populated passengers
         const updatedService = await Service.findById(service._id)
