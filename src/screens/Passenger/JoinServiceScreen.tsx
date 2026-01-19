@@ -117,29 +117,57 @@ export const JoinServiceScreen = () => {
     );
 
     const openMapPicker = async () => {
+        setLoading(true);
         try {
             const { status } = await Location.requestForegroundPermissionsAsync();
             if (status === 'granted') {
-                const loc = await Location.getCurrentPositionAsync({});
-                const newRegion = {
-                    latitude: loc.coords.latitude,
-                    longitude: loc.coords.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                };
-                setMapRegion(newRegion);
-                setTempLocation({
-                    latitude: loc.coords.latitude,
-                    longitude: loc.coords.longitude,
-                });
-                handleMapRegionChange(loc.coords.latitude, loc.coords.longitude);
+                // 1. Try to use existing pickup location if available
+                if (pickupLocation) {
+                    setMapRegion({
+                        latitude: pickupLocation.latitude,
+                        longitude: pickupLocation.longitude,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                    });
+                    setTempLocation({
+                        latitude: pickupLocation.latitude,
+                        longitude: pickupLocation.longitude,
+                    });
+                    setSelectedAddress(pickupLocation.address || '');
+                } else {
+                    // 2. Try last known location for speed
+                    let loc: any = await Location.getLastKnownPositionAsync({});
+
+                    // 3. Fallback to current location if no last known
+                    if (!loc) {
+                        loc = await Location.getCurrentPositionAsync({});
+                    }
+
+                    if (loc) {
+                        const newRegion = {
+                            latitude: loc.coords.latitude,
+                            longitude: loc.coords.longitude,
+                            latitudeDelta: 0.01,
+                            longitudeDelta: 0.01,
+                        };
+                        setMapRegion(newRegion);
+                        setTempLocation({
+                            latitude: loc.coords.latitude,
+                            longitude: loc.coords.longitude,
+                        });
+                        // Don't reverse geocode immediately on open to save time/requests
+                        // Let the map idle create the geocode request or user interaction
+                    }
+                }
             }
         } catch (e) {
             console.log('Location permission error:', e);
+        } finally {
+            setLoading(false);
+            setShowMapPicker(true);
+            setSearchQuery('');
+            setSearchResults([]);
         }
-        setShowMapPicker(true);
-        setSearchQuery('');
-        setSearchResults([]);
     };
 
     const useMyLocation = async () => {
@@ -194,6 +222,16 @@ export const JoinServiceScreen = () => {
         setLoading(true);
         try {
             await api.services.join(currentUserId, code, pickupLocation);
+
+            // Update user profile in localStorage
+            const { tokenService } = require('../../services/api');
+            const user = await tokenService.getUser();
+            if (user) {
+                user.pickupLocation = pickupLocation;
+                await tokenService.saveUser(user);
+                console.log('User pickup location updated in localStorage:', pickupLocation);
+            }
+
             Alert.alert('Başarılı', 'Servise katıldınız!', [
                 { text: 'Tamam', onPress: () => navigation.goBack() }
             ]);

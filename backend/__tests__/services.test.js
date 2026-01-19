@@ -187,6 +187,31 @@ describe('Services API Tests', () => {
             expect(res.statusCode).toBe(400);
             expect(res.body.msg).toContain('already');
         });
+
+        it('should save pickup location to user profile when joining service', async () => {
+            const pickupLocation = {
+                latitude: 41.0082,
+                longitude: 28.9784,
+                address: 'Test Biniş Noktası'
+            };
+
+            const res = await request(app)
+                .post('/api/services/join')
+                .send({
+                    passengerId,
+                    code: code,
+                    pickupLocation
+                });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verify pickup location was saved to user profile
+            const user = await User.findById(passengerId);
+            expect(user.pickupLocation).toBeDefined();
+            expect(user.pickupLocation.latitude).toBe(pickupLocation.latitude);
+            expect(user.pickupLocation.longitude).toBe(pickupLocation.longitude);
+            expect(user.pickupLocation.address).toBe(pickupLocation.address);
+        });
     });
 
     describe('POST /api/services/remove-passenger', () => {
