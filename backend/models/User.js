@@ -12,8 +12,17 @@ const UserSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['DRIVER', 'PASSENGER'],
-        default: 'PASSENGER',
+        enum: ['passenger', 'driver', 'admin'],
+        default: 'passenger'
+    },
+    pushToken: {
+        type: String,
+        default: null
+    },
+    notificationPreferences: {
+        allowPromotions: { type: Boolean, default: true },
+        allowUpdates: { type: Boolean, default: true },
+        allowServiceAlerts: { type: Boolean, default: true }
     },
     createdAt: {
         type: Date,

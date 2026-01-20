@@ -303,6 +303,32 @@ export const api = {
         }
     },
 
+    users: {
+        updatePushToken: async (userId: string, pushToken: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/users/push-token`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ userId, pushToken }),
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Update Push Token Error:', error);
+                throw error;
+            }
+        },
+
+        updatePreferences: async (userId: string, preferences: any) => {
+            try {
+                const headers = await getAuthHeaders();
+                // We haven't created this endpoint yet in this iteration, but adding the stub.
+                // Actually, let's stick to what we have. 
+                // Just updatePushToken for now.
+            } catch (e) { throw e; }
+        }
+    },
+
     routing: {
         getRoadRoute: async (startLat: number, startLon: number, endLat: number, endLon: number) => {
             try {
