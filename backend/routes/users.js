@@ -30,4 +30,15 @@ router.put('/:id/location', authMiddleware, async (req, res) => {
     }
 });
 
+// Update user push token
+router.post('/push-token', async (req, res) => {
+    const { userId, pushToken } = req.body;
+    try {
+        await User.findByIdAndUpdate(userId, { pushToken });
+        res.status(200).json({ message: 'Push token updated' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating push token', error });
+    }
+});
+
 module.exports = router;
