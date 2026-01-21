@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
-import { useAuth } from '../../context/AuthContext'; // Fixed path
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
+import { InteractiveNotification } from '../../components/NotificationTypes/InteractiveNotification';
+import { LocationNotification } from '../../components/NotificationTypes/LocationNotification';
 
 // Define Notification Type
 interface Notification {
     _id: string;
     title: string;
     body: string;
-    type: 'INFO' | 'ALERT' | 'INTERACTIVE';
+    type: 'INFO' | 'ALERT' | 'PASSENGER_ABSENCE_REQUEST' | 'DRIVER_LOCATION_STARTED' | 'PASSENGER_LOCATION_SHARED' | 'INTERACTIVE';
     isRead: boolean;
+    response?: string | null;
     createdAt: string;
     data?: any;
 }
@@ -42,7 +45,6 @@ export const NotificationsScreen = ({ navigation }: any) => {
         if (!item.isRead) {
             try {
                 await api.notifications.markAsRead(item._id);
-                // Update local state to reflect read status
                 setNotifications(prev =>
                     prev.map(n => n._id === item._id ? { ...n, isRead: true } : n)
                 );
@@ -51,31 +53,85 @@ export const NotificationsScreen = ({ navigation }: any) => {
             }
         }
 
-        // Handle Deep Linking / Actions based on 'type'
-        if (item.type === 'INTERACTIVE') {
-            // TODO: Show action sheet or navigate
-            alert(`Action required: ${item.title}`);
+        // Navigation Logic based on Type
+        if (item.type === 'DRIVER_LOCATION_STARTED' || item.type === 'PASSENGER_LOCATION_SHARED') {
+            // Navigate directly to PassengerTracking with serviceId from notification data
+            const serviceId = item.data?.serviceId;
+            if (serviceId) {
+                navigation.navigate('PassengerTracking', { serviceId });
+            } else {
+                Alert.alert("Hata", "Servis bilgisi bulunamadı.");
+            }
+        }
+    };
+
+    const handleResponse = async (item: Notification, responseValue: string) => {
+        try {
+            await api.notifications.respond(item._id, responseValue);
+            setNotifications(prev =>
+                prev.map(n => n._id === item._id ? { ...n, response: responseValue, isRead: true } : n)
+            );
+            Alert.alert("Cevap Kaydedildi", `Cevabınız: ${responseValue}`);
+        } catch (error) {
+            Alert.alert("Hata", "Cevap gönderilemedi");
+        }
+    };
+
+    const renderActionButtons = (item: Notification) => {
+        switch (item.type) {
+            case 'PASSENGER_ABSENCE_REQUEST':
+            case 'INTERACTIVE':
+                return (
+                    <InteractiveNotification
+                        notification={item}
+                        onRespond={(val) => handleResponse(item, val)}
+                    />
+                );
+            case 'DRIVER_LOCATION_STARTED':
+            case 'PASSENGER_LOCATION_SHARED':
+                return (
+                    <LocationNotification
+                        notification={item}
+                        onPress={() => handleNotificationPress(item)}
+                    />
+                );
+            default:
+                return null;
         }
     };
 
     const renderItem = ({ item }: { item: Notification }) => (
         <TouchableOpacity
-            style={[styles.itemUrl, !item.isRead && styles.unreadItem]}
+            style={[
+                styles.itemUrl,
+                !item.isRead && styles.unreadItem,
+                item.response && styles.respondedItem
+            ]}
             onPress={() => handleNotificationPress(item)}
+            activeOpacity={0.9}
         >
-            <View style={styles.iconContainer}>
-                <Ionicons
-                    name={item.type === 'ALERT' ? 'warning' : 'notifications'}
-                    size={24}
-                    color={item.type === 'ALERT' ? COLORS.error : COLORS.primary}
-                />
+            <View style={styles.row}>
+                <View style={styles.iconContainer}>
+                    <Ionicons
+                        name={
+                            item.type === 'ALERT' ? 'warning' :
+                                item.type === 'DRIVER_LOCATION_STARTED' ? 'navigate' :
+                                    'notifications'
+                        }
+                        size={24}
+                        color={item.type === 'ALERT' ? COLORS.error : COLORS.primary}
+                    />
+                </View>
+                <View style={styles.contentContainer}>
+                    <Text style={styles.title}>{item.title}</Text>
+                    <Text style={styles.body}>{item.body}</Text>
+                    <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
+
+                    {/* Render Actions underneath body */}
+                    {renderActionButtons(item)}
+                </View>
+                {!item.isRead && <View style={styles.dot} />}
             </View>
-            <View style={styles.contentContainer}>
-                <Text style={styles.title}>{item.title}</Text>
-                <Text style={styles.body}>{item.body}</Text>
-                <Text style={styles.time}>{new Date(item.createdAt).toLocaleString()}</Text>
-            </View>
-            {!item.isRead && <View style={styles.dot} />}
         </TouchableOpacity>
     );
 
@@ -94,6 +150,7 @@ export const NotificationsScreen = ({ navigation }: any) => {
                         <Text style={styles.emptyText}>Henüz bildirim yok</Text>
                     </View>
                 }
+                contentContainerStyle={{ paddingBottom: 20 }}
             />
         </View>
     );
@@ -105,34 +162,48 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5',
     },
     itemUrl: {
-        flexDirection: 'row',
         padding: 16,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
-        alignItems: 'center',
+    },
+    row: {
+        flexDirection: 'row',
     },
     unreadItem: {
         backgroundColor: '#e6f7ff', // Light blue highlight
     },
+    respondedItem: {
+        backgroundColor: '#f9f9f9', // Slightly grayed out
+    },
     iconContainer: {
         marginRight: 16,
+        marginTop: 4,
     },
     contentContainer: {
         flex: 1,
     },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
     title: {
         fontWeight: 'bold',
-        marginBottom: 4,
         fontSize: 16,
+        color: COLORS.text,
+        flex: 1,
     },
     body: {
         color: '#666',
-        marginBottom: 4,
+        marginBottom: 8,
+        fontSize: 14,
     },
     time: {
-        fontSize: 12,
+        fontSize: 11,
         color: '#999',
+        marginBottom: 8,
     },
     dot: {
         width: 10,
@@ -140,6 +211,7 @@ const styles = StyleSheet.create({
         borderRadius: 5,
         backgroundColor: COLORS.primary,
         marginLeft: 8,
+        marginTop: 6,
     },
     emptyContainer: {
         flex: 1,

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Service = require('../models/Service');
 const User = require('../models/User');
+const NotificationService = require('../services/notificationService');
 const { authMiddleware } = require('../middleware/auth');
 
 // ... (other requires)
@@ -128,6 +129,9 @@ router.get('/passenger/:passengerId', async (req, res) => {
 router.put('/:id', async (req, res) => {
     const { name, plate, schedules, active } = req.body;
 
+    console.log(`[PUT /services/:id] Request body:`, req.body);
+    console.log(`[PUT /services/:id] Active param:`, active, `Type:`, typeof active);
+
     try {
         let service = await Service.findById(req.params.id);
 
@@ -138,7 +142,47 @@ router.put('/:id', async (req, res) => {
         service.name = name || service.name;
         service.plate = plate || service.plate;
         service.schedules = schedules || service.schedules;
-        if (typeof active !== 'undefined') service.active = active;
+
+        // Check if service is becoming active (Trip Started)
+        if (typeof active !== 'undefined') {
+            const wasActive = service.active;
+            service.active = active;
+
+            console.log(`[DEBUG] Service Toggle: ${wasActive} -> ${active} (Type: ${typeof active})`);
+
+            // Trigger notification only if starting (active becomes true)
+            // Handle string "true" if coming from form-data/json weirdly
+            const isActiveBool = active === true || active === 'true';
+
+            if (isActiveBool && !wasActive) {
+                console.log('[DEBUG] Trip Start Condition MET. Checking passengers...');
+                try {
+                    // Start Trip Notification
+                    if (service.passengers && service.passengers.length > 0) {
+                        console.log(`[DEBUG] Found ${service.passengers.length} passengers. Sending notifications...`);
+                        service.passengers.forEach(passengerId => {
+                            NotificationService.send(
+                                passengerId,
+                                'Servis Başladı! 🚌',
+                                `${service.name} servisi yola çıktı. Canlı takip için dokunun.`,
+                                'DRIVER_LOCATION_STARTED',
+                                {
+                                    serviceId: service._id,
+                                    driverId: service.driver
+                                }
+                            ).then(() => console.log(`[DEBUG] Notif sent to ${passengerId}`))
+                                .catch(e => console.error(`[DEBUG] Failed to notify passenger ${passengerId}:`, e));
+                        });
+                    } else {
+                        console.log('[DEBUG] No passengers found in service to notify.');
+                    }
+                } catch (notifErr) {
+                    console.error('[Service] Notification Trigger Error:', notifErr);
+                }
+            } else {
+                console.log('[DEBUG] Trip Start Condition NOT met.');
+            }
+        }
 
         await service.save();
         res.json(service);
@@ -259,6 +303,23 @@ router.post('/attendance', authMiddleware, async (req, res) => {
         }
 
         await service.save();
+
+        // Notify Passenger about status change (e.g. marked as BINMEDI)
+        if (status === 'BINMEDI') {
+            const pId = passengerId.toString(); // Ensure string
+            NotificationService.send(
+                pId,
+                'Yoklama Bildirimi ⚠️',
+                'Sürücü sizi "Gelmeyecek/Bindi" olarak işaretledi. Bir sorun mu var?',
+                'INTERACTIVE',
+                {
+                    serviceId: service._id,
+                    status,
+                    question: 'Servise gelecek misiniz?'
+                }
+            ).catch(e => console.error('Attendance Notif Error:', e));
+        }
+
         res.json(service.attendance);
     } catch (err) {
         console.error(err.message);

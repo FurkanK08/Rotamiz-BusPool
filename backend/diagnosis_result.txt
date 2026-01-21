@@ -1,0 +1,104 @@
+Connected to MongoDB
+
+NOTIFICATIONS: 12
+  1. Title: Diagnostic Test
+     UserId: 696bf091186791c04ba28bd8
+     Type: INFO
+     Created: Wed Jan 21 2026 12:44:23 GMT+0300 (GMT+03:00)
+  2. Title: Diagnostic Test
+     UserId: 696bf091186791c04ba28bd8
+     Type: INFO
+     Created: Wed Jan 21 2026 12:44:13 GMT+0300 (GMT+03:00)
+  3. Title: Servis Başladı! 🚌
+     UserId: 696dea88c8af98f52325edbd
+     Type: DRIVER_LOCATION_STARTED
+     Created: Wed Jan 21 2026 12:36:17 GMT+0300 (GMT+03:00)
+  4. Title: Yoklama Bildirimi ⚠️
+     UserId: 696dea88c8af98f52325edbd
+     Type: INTERACTIVE
+     Created: Wed Jan 21 2026 12:35:55 GMT+0300 (GMT+03:00)
+  5. Title: Servis Başladı! 🚌
+     UserId: 696dea88c8af98f52325edbd
+     Type: DRIVER_LOCATION_STARTED
+     Created: Wed Jan 21 2026 12:30:04 GMT+0300 (GMT+03:00)
+
+USERS:
+  1. Yolcu 1 (PASSENGER) - ID: 696bf091186791c04ba28bd8
+  2. Yolcu 2 (PASSENGER) - ID: 696bf091186791c04ba28bda
+  3. Yolcu 3 (PASSENGER) - ID: 696bf091186791c04ba28bdc
+  4. Yolcu 4 (PASSENGER) - ID: 696bf091186791c04ba28bde
+  5. Yolcu 5 (PASSENGER) - ID: 696bf091186791c04ba28be0
+  6. Yolcu 6 (PASSENGER) - ID: 696bf091186791c04ba28be2
+  7. Yolcu 7 (PASSENGER) - ID: 696bf091186791c04ba28be4
+  8. Yolcu 8 (PASSENGER) - ID: 696bf091186791c04ba28be6
+  9. Yolcu 9 (PASSENGER) - ID: 696bf091186791c04ba28be8
+  10. Yolcu 10 (PASSENGER) - ID: 696bf091186791c04ba28bea
+  11. Yolcu 11 (PASSENGER) - ID: 696bf091186791c04ba28bec
+  12. Yolcu 12 (PASSENGER) - ID: 696bf091186791c04ba28bee
+  13. Yolcu 13 (PASSENGER) - ID: 696bf091186791c04ba28bf0
+  14. Yolcu 14 (PASSENGER) - ID: 696bf091186791c04ba28bf2
+  15. Yolcu 15 (PASSENGER) - ID: 696bf091186791c04ba28bf4
+  16. Yolcu 16 (PASSENGER) - ID: 696bf091186791c04ba28bf6
+  17. Yolcu 17 (PASSENGER) - ID: 696bf091186791c04ba28bf8
+  18. Yolcu 18 (PASSENGER) - ID: 696bf091186791c04ba28bfa
+  19. Yolcu 19 (PASSENGER) - ID: 696bf091186791c04ba28bfc
+  20. Yolcu 20 (PASSENGER) - ID: 696bf091186791c04ba28bfe
+  21. 1231231231 (PASSENGER) - ID: 696bf0db9965c7237f24199c
+  22. Ali mehmet (PASSENGER) - ID: 696cdc19e2452b4af6e653c9
+  23. Test Driver Yılmaz (DRIVER) - ID: 696ce7929ea86b1e8d4d5ece
+  24. Yolcu Cevizlibağ (PASSENGER) - ID: 696ce7929ea86b1e8d4d5ed1
+  25. Yolcu Topkapı (PASSENGER) - ID: 696ce7929ea86b1e8d4d5ed4
+  26. Yolcu Çapa (PASSENGER) - ID: 696ce7929ea86b1e8d4d5ed7
+  27. Yolcu Haseki (PASSENGER) - ID: 696ce7929ea86b1e8d4d5eda
+  28. Yolcu Aksaray (PASSENGER) - ID: 696ce7929ea86b1e8d4d5edd
+  29. Yolcu Fatih (PASSENGER) - ID: 696ce7929ea86b1e8d4d5ee0
+  30. Ahmet driver (DRIVER) - ID: 696d0053cba88736f274690d
+  31. Mehmet ali (PASSENGER) - ID: 696d02b5cba88736f274693b
+  32. Ali kaan (DRIVER) - ID: 696dea04c8af98f52325edb3
+  33. Ahmet esenyurt (PASSENGER) - ID: 696dea88c8af98f52325edbd
+
+SERVICES:
+  1. Akşam Servisi - Merkez - Active: false
+     Driver: 696bf091186791c04ba28bd4
+     Passengers count: 16
+       Passenger 1: 696bf091186791c04ba28bec
+       Passenger 2: 696bf091186791c04ba28bee
+       Passenger 3: 696bf091186791c04ba28bf0
+       Passenger 4: 696bf091186791c04ba28bf2
+       Passenger 5: 696bf091186791c04ba28bf4
+       Passenger 6: 696bf091186791c04ba28bf6
+       Passenger 7: 696bf091186791c04ba28bf8
+       Passenger 8: 696bf091186791c04ba28bfa
+       Passenger 9: 696bf091186791c04ba28bfc
+       Passenger 10: 696bf091186791c04ba28bfe
+       Passenger 11: 696bf091186791c04ba28bd8
+       Passenger 12: 696bf0db9965c7237f24199c
+       Passenger 13: 696bf091186791c04ba28bda
+       Passenger 14: 696bf091186791c04ba28be2
+       Passenger 15: 696ce7929ea86b1e8d4d5ee0
+       Passenger 16: 696d02b5cba88736f274693b
+  2. hatay - Active: false
+     Driver: 696bf091186791c04ba28bd4
+     Passengers count: 2
+       Passenger 1: 696bf091186791c04ba28be4
+       Passenger 2: 696cdc19e2452b4af6e653c9
+  3. Organize sanay - Active: false
+     Driver: 696d0053cba88736f274690d
+     Passengers count: 1
+       Passenger 1: 696ce7929ea86b1e8d4d5ece
+  4. ornganize - Active: true
+     Driver: 696ce7929ea86b1e8d4d5ece
+     Passengers count: 2
+       Passenger 1: 696bf091186791c04ba28bfe
+       Passenger 2: 696bf091186791c04ba28bf4
+  5. Iga servis - Active: true
+     Driver: 696dea04c8af98f52325edb3
+     Passengers count: 1
+       Passenger 1: 696dea88c8af98f52325edbd
+
+TESTING NOTIFICATION CREATION:
+  Creating for user: 696bf091186791c04ba28bd8
+  Notification saved: 6970a022bb0ed8964e340ec4
+  Retrieved count for this user: 4
+
+DIAGNOSIS COMPLETE
