@@ -328,6 +328,33 @@ export const api = {
                 console.error('Mark Read Error:', error);
                 throw error;
             }
+        },
+        delete: async (notificationId: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/notifications/${notificationId}`, {
+                    method: 'DELETE',
+                    headers
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Delete Notification Error:', error);
+                throw error;
+            }
+        },
+        respond: async (notificationId: string, responseValue: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/notifications/${notificationId}/respond`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ response: responseValue })
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Notification Response Error:', error);
+                throw error;
+            }
         }
     },
 

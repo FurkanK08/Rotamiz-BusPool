@@ -5,12 +5,14 @@ import { COLORS, SPACING } from '../../constants/theme';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 
 export const OTPScreen = () => {
     const [code, setCode] = useState('');
     const [loading, setLoading] = useState(false);
     const route = useRoute<any>();
     const navigation = useNavigation<any>();
+    const { setAuth } = useAuth();
     const { phoneNumber, userId, existingUser, userRole, userName } = route.params;
 
     const handleVerify = () => {
@@ -20,6 +22,9 @@ export const OTPScreen = () => {
             setLoading(false);
 
             if (existingUser && userRole && userName) {
+                // CRITICAL: Set auth context BEFORE navigation
+                setAuth(userId, userRole);
+
                 if (userRole === 'DRIVER') {
                     navigation.reset({
                         index: 0,
@@ -32,6 +37,7 @@ export const OTPScreen = () => {
                     });
                 }
             } else {
+                // For new users, pass to RoleSelection (setAuth will be called there)
                 navigation.navigate('RoleSelection', { userId });
             }
         }, 1000);

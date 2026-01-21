@@ -7,12 +7,14 @@ import { Input } from '../../components/Input';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../../services/api';
 import { Alert } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 
 export const RoleSelectionScreen = () => {
     const [name, setName] = useState('');
     const [selectedRole, setSelectedRole] = useState<'DRIVER' | 'PASSENGER' | null>(null);
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
+    const { setAuth } = useAuth();
     const { userId } = route.params || {};
     const [loading, setLoading] = useState(false);
 
@@ -28,6 +30,9 @@ export const RoleSelectionScreen = () => {
                 // If checking in dev mode without passing props, just warn but allow proceed
                 console.warn('No userId found provided to RoleSelection.');
             }
+
+            // CRITICAL: Set auth context BEFORE navigation
+            setAuth(userId, selectedRole);
 
             if (selectedRole === 'DRIVER') {
                 navigation.reset({

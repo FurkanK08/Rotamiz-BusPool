@@ -74,9 +74,30 @@ io.on('connection', (socket) => {
     });
 
     // Driver requests passenger locations
-    socket.on('requestPassengerLocation', ({ serviceId }) => {
+    socket.on('requestPassengerLocation', async ({ serviceId }) => {
         io.to(serviceId).emit('shareLocationRequest');
         console.log(`Location request sent to service ${serviceId}`);
+
+        // Persist as notification for history
+        try {
+            const Service = require('./models/Service');
+            const NotificationService = require('./services/notificationService');
+
+            const service = await Service.findById(serviceId);
+            if (service && service.passengers && service.passengers.length > 0) {
+                service.passengers.forEach(passengerId => {
+                    NotificationService.send(
+                        passengerId,
+                        'Konum İsteği 📍',
+                        'Sürücü konumunuzu paylaşmanızı istiyor.',
+                        'PASSENGER_LOCATION_SHARED', // Reusing this type or create REQUEST_LOCATION
+                        { serviceId, action: 'SHARE_LOCATION' }
+                    ).catch(e => console.error('Socket Notif Error:', e));
+                });
+            }
+        } catch (err) {
+            console.error('Socket Notification Error:', err);
+        }
     });
 
     // Passenger shares location with driver
