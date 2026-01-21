@@ -94,6 +94,7 @@ io.on('connection', (socket) => {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/notifications', require('./routes/notifications')); // NEW: Notification Routes
 
 app.get('/', (req, res) => {
     res.send('Service Tracking API is Running 🚀');
