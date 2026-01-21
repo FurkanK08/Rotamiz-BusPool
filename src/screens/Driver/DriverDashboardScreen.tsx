@@ -125,9 +125,9 @@ export const DriverDashboardScreen = () => {
                 </View>
                 <TouchableOpacity
                     style={styles.profileButton}
-                    onPress={() => navigation.navigate('PassengerSettings', { userId: currentUserId })} // Use existing settings screen as profile for now reused
+                    onPress={() => navigation.navigate('Notifications')}
                 >
-                    <Text style={{ fontSize: 20 }}>👤</Text>
+                    <Text style={{ fontSize: 24 }}>🔔</Text>
                 </TouchableOpacity>
             </View>
 

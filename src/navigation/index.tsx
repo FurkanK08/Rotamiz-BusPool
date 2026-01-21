@@ -20,7 +20,7 @@ import { PassengerAbsenceScreen } from '../screens/Passenger/PassengerAbsenceScr
 // ... inside Stack.Navigator
 
 import { PassengerSettingsScreen } from '../screens/Passenger/PassengerSettingsScreen';
-import { NotificationScreen } from '../screens/Common/NotificationScreen';
+import { NotificationsScreen } from '../screens/Shared/NotificationsScreen';
 import { COLORS } from '../constants/theme';
 
 const Stack = createNativeStackNavigator();
@@ -139,7 +139,7 @@ export const RootNavigator = () => {
                 <Stack.Screen name="PassengerAbsence" component={PassengerAbsenceScreen} />
 
                 {/* Common */}
-                <Stack.Screen name="Notifications" component={NotificationScreen} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );

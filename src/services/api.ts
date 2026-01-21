@@ -303,6 +303,34 @@ export const api = {
         }
     },
 
+    notifications: {
+        getAll: async (userId: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/notifications?userId=${userId}`, {
+                    headers
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Get Notifications Error:', error);
+                throw error;
+            }
+        },
+        markAsRead: async (notificationId: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+                    method: 'PUT',
+                    headers
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Mark Read Error:', error);
+                throw error;
+            }
+        }
+    },
+
     users: {
         updatePushToken: async (userId: string, pushToken: string) => {
             try {

@@ -102,9 +102,9 @@ export const PassengerHomeScreen = () => {
                 </View>
                 <TouchableOpacity
                     style={styles.settingsBtn}
-                    onPress={() => navigation.navigate('PassengerSettings', { userId: currentUserId })}
+                    onPress={() => navigation.navigate('Notifications')}
                 >
-                    <Text style={{ fontSize: 20 }}>⚙️</Text>
+                    <Text style={{ fontSize: 24 }}>🔔</Text>
                 </TouchableOpacity>
             </View>
 
