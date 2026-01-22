@@ -20,9 +20,12 @@ const UserSchema = new mongoose.Schema({
         default: null
     },
     notificationPreferences: {
-        allowPromotions: { type: Boolean, default: true },
-        allowUpdates: { type: Boolean, default: true },
-        allowServiceAlerts: { type: Boolean, default: true }
+        serviceStart: { type: Boolean, default: true },      // Servis başladı bildirimi
+        serviceEnd: { type: Boolean, default: true },        // Servis bitti bildirimi
+        attendanceRequest: { type: Boolean, default: true }, // Yoklama bildirimi
+        locationRequest: { type: Boolean, default: true },   // Konum isteği bildirimi
+        passengerResponse: { type: Boolean, default: true }, // Yolcu yanıtı (sürücü için)
+        promotional: { type: Boolean, default: false }       // Promosyon/duyuru
     },
     createdAt: {
         type: Date,
