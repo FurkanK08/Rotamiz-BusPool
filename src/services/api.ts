@@ -374,13 +374,32 @@ export const api = {
             }
         },
 
-        updatePreferences: async (userId: string, preferences: any) => {
+        getProfile: async (userId: string) => {
             try {
                 const headers = await getAuthHeaders();
-                // We haven't created this endpoint yet in this iteration, but adding the stub.
-                // Actually, let's stick to what we have. 
-                // Just updatePushToken for now.
-            } catch (e) { throw e; }
+                const response = await fetch(`${API_URL}/users/${userId}`, {
+                    headers,
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Get Profile Error:', error);
+                throw error;
+            }
+        },
+
+        updateNotificationPreferences: async (userId: string, preferences: any) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/users/${userId}/notification-preferences`, {
+                    method: 'PUT',
+                    headers,
+                    body: JSON.stringify({ notificationPreferences: preferences }),
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Update Notification Preferences Error:', error);
+                throw error;
+            }
         }
     },
 

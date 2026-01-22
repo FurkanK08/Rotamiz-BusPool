@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useLayoutEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -23,6 +23,20 @@ export const NotificationsScreen = ({ navigation }: any) => {
     const { userId } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // Add settings icon to header
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerRight: () => (
+                <TouchableOpacity
+                    onPress={() => navigation.navigate('NotificationSettings')}
+                    style={{ marginRight: 16 }}
+                >
+                    <Ionicons name="settings-outline" size={24} color={COLORS.primary} />
+                </TouchableOpacity>
+            ),
+        });
+    }, [navigation]);
 
     const fetchNotifications = async () => {
         if (!userId) return;

@@ -1,26 +1,26 @@
 Connected to MongoDB
 
-NOTIFICATIONS: 12
-  1. Title: Diagnostic Test
-     UserId: 696bf091186791c04ba28bd8
-     Type: INFO
-     Created: Wed Jan 21 2026 12:44:23 GMT+0300 (GMT+03:00)
-  2. Title: Diagnostic Test
-     UserId: 696bf091186791c04ba28bd8
-     Type: INFO
-     Created: Wed Jan 21 2026 12:44:13 GMT+0300 (GMT+03:00)
-  3. Title: Servis Başladı! 🚌
+NOTIFICATIONS: 18
+  1. Title: Servis Başladı! 🚌
      UserId: 696dea88c8af98f52325edbd
      Type: DRIVER_LOCATION_STARTED
-     Created: Wed Jan 21 2026 12:36:17 GMT+0300 (GMT+03:00)
-  4. Title: Yoklama Bildirimi ⚠️
+     Created: Wed Jan 21 2026 12:55:58 GMT+0300 (GMT+03:00)
+  2. Title: Yolcu Yanıtı 📋
+     UserId: 696dea04c8af98f52325edb3
+     Type: INFO
+     Created: Wed Jan 21 2026 12:55:57 GMT+0300 (GMT+03:00)
+  3. Title: Yoklama Bildirimi ⚠️
      UserId: 696dea88c8af98f52325edbd
      Type: INTERACTIVE
-     Created: Wed Jan 21 2026 12:35:55 GMT+0300 (GMT+03:00)
-  5. Title: Servis Başladı! 🚌
+     Created: Wed Jan 21 2026 12:55:31 GMT+0300 (GMT+03:00)
+  4. Title: Servis Başladı! 🚌
      UserId: 696dea88c8af98f52325edbd
      Type: DRIVER_LOCATION_STARTED
-     Created: Wed Jan 21 2026 12:30:04 GMT+0300 (GMT+03:00)
+     Created: Wed Jan 21 2026 12:52:30 GMT+0300 (GMT+03:00)
+  5. Title: Yoklama Bildirimi ⚠️
+     UserId: 696dea88c8af98f52325edbd
+     Type: INTERACTIVE
+     Created: Wed Jan 21 2026 12:52:08 GMT+0300 (GMT+03:00)
 
 USERS:
   1. Yolcu 1 (PASSENGER) - ID: 696bf091186791c04ba28bd8
@@ -98,7 +98,7 @@ SERVICES:
 
 TESTING NOTIFICATION CREATION:
   Creating for user: 696bf091186791c04ba28bd8
-  Notification saved: 6970a022bb0ed8964e340ec4
-  Retrieved count for this user: 4
+  Notification saved: 6971db7f9c6722985c246271
+  Retrieved count for this user: 5
 
 DIAGNOSIS COMPLETE
