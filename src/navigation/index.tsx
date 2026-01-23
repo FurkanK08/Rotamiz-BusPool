@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text } from 'react-native';
@@ -16,13 +16,12 @@ import { JoinServiceScreen } from '../screens/Passenger/JoinServiceScreen';
 import { PassengerLocationScreen } from '../screens/Passenger/PassengerLocationScreen';
 import { PassengerTrackingScreen } from '../screens/Passenger/PassengerTrackingScreen';
 import { PassengerAbsenceScreen } from '../screens/Passenger/PassengerAbsenceScreen';
-
-// ... inside Stack.Navigator
-
 import { PassengerSettingsScreen } from '../screens/Passenger/PassengerSettingsScreen';
 import { NotificationsScreen } from '../screens/Shared/NotificationsScreen';
 import { NotificationSettingsScreen } from '../screens/Shared/NotificationSettingsScreen';
 import { COLORS } from '../constants/theme';
+
+export const navigationRef = createNavigationContainerRef();
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -111,7 +110,7 @@ const PassengerTabs = () => {
 
 export const RootNavigator = () => {
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
                 screenOptions={{
                     headerShown: false,
@@ -140,8 +139,28 @@ export const RootNavigator = () => {
                 <Stack.Screen name="PassengerAbsence" component={PassengerAbsenceScreen} />
 
                 {/* Common */}
-                <Stack.Screen name="Notifications" component={NotificationsScreen} />
-                <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
+                <Stack.Screen
+                    name="Notifications"
+                    component={NotificationsScreen}
+                    options={{
+                        headerShown: true,
+                        title: 'Bildirimler',
+                        headerTintColor: COLORS.primary,
+                        headerTitleStyle: { color: COLORS.text },
+                        headerBackTitleVisible: false
+                    }}
+                />
+                <Stack.Screen
+                    name="NotificationSettings"
+                    component={NotificationSettingsScreen}
+                    options={{
+                        headerShown: true,
+                        title: 'Bildirim Ayarları',
+                        headerTintColor: COLORS.primary,
+                        headerTitleStyle: { color: COLORS.text },
+                        headerBackTitleVisible: false
+                    }}
+                />
             </Stack.Navigator>
         </NavigationContainer>
     );

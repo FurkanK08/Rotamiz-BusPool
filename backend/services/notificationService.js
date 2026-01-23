@@ -25,7 +25,7 @@ class NotificationService {
                 throw new Error('Missing required parameters: userId, title, or body');
             }
 
-            // 2. Fetch User to get Push Token and ensure user exists
+            // 2. Fetch User to get Push Token and Preferences
             const user = await User.findById(userId);
             if (!user) {
                 console.error(`[NotificationService.send] ERROR - User not found: ${userId}`);
@@ -34,10 +34,30 @@ class NotificationService {
 
             console.log(`[NotificationService.send] User found: ${user._id} (${user.name})`);
 
+            // 2.5 Check Preferences
+            const shouldSend = NotificationService.checkPreference(user, type);
+            if (!shouldSend) {
+                console.log(`[NotificationService.send] 🚫 Blocked by user preference. Type: ${type}, User: ${user._id}`);
+                // We return null or a specific object to indicate it was blocked, 
+                // but strictly speaking we shouldn't even save it to DB if the user doesn't want it,
+                // OR we save it as "read" silently? 
+                // Best practice: Usually just don't send/save if it's a "opt-out" marketing thing.
+                // But for "Service Started", the user might want to see it in history even if no push.
+                // Let's decide: If blocked by preference, DO NOT SEND PUSH, but SAVE TO DB?
+                // Or DO NOT SAVE at all? 
+                // The prompt implies "Preference Logic" -> usually means "Don't disturb me via Push". 
+                // But often users still want to see it in the "Notification Center".
+                // However, if I turn off "Promotional", I probably don't want them in my list either.
+                // Let's go with: SAVE to DB always, but ONLY PUSH if preference allows?
+                // Wait, if I disable "Service Start" push, I might still want to know it happened if I open the app.
+                // Let's split logic: Always Save, Conditionally Push.
+                // UNLESS it's promotional, maybe?
+                // Let's stick to: Always Save to DB (so history exists), but Skip Push.
+            }
+
             // 3. Save Notification to Database FIRST for reliability
-            // CRITICAL: Use user._id (ObjectId) for consistency
             const notification = new Notification({
-                userId: user._id, // Always use ObjectId from user document
+                userId: user._id,
                 title,
                 body,
                 type,
@@ -46,37 +66,37 @@ class NotificationService {
 
             await notification.save();
             console.log(`[NotificationService.send] ✅ Notification saved to DB: ${notification._id}`);
-            console.log(`[NotificationService.send]    - Title: "${title}"`);
-            console.log(`[NotificationService.send]    - UserId: ${notification.userId}`);
-            console.log(`[NotificationService.send]    - Type: ${notification.type}`);
 
-            // 4. Send Push Notification (NON-BLOCKING - failures won't affect DB save)
-            if (user.pushToken && Expo.isExpoPushToken(user.pushToken)) {
-                console.log(`[NotificationService.send] Sending push to token: ${user.pushToken.substring(0, 20)}...`);
+            // 4. Send Push Notification (If allowed)
+            if (shouldSend) {
+                if (user.pushToken && Expo.isExpoPushToken(user.pushToken)) {
+                    console.log(`[NotificationService.send] Sending push to token: ${user.pushToken.substring(0, 20)}...`);
 
-                const messages = [{
-                    to: user.pushToken,
-                    sound: 'default',
-                    title: title,
-                    body: body,
-                    data: { ...data, notificationId: notification._id.toString(), type },
-                    priority: 'high',
-                    channelId: 'default',
-                    _displayInForeground: true
-                }];
+                    const messages = [{
+                        to: user.pushToken,
+                        sound: 'default',
+                        title: title,
+                        body: body,
+                        data: { ...data, notificationId: notification._id.toString(), type },
+                        priority: 'high',
+                        channelId: 'default', // TODO: Implement Channels in next step
+                        _displayInForeground: true
+                    }];
 
-                try {
-                    const chunks = expo.chunkPushNotifications(messages);
-                    for (const chunk of chunks) {
-                        const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
-                        console.log(`[NotificationService.send] Push sent successfully:`, ticketChunk);
+                    try {
+                        const chunks = expo.chunkPushNotifications(messages);
+                        for (const chunk of chunks) {
+                            const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
+                            console.log(`[NotificationService.send] Push sent successfully:`, ticketChunk);
+                        }
+                    } catch (pushError) {
+                        console.error(`[NotificationService.send] Push notification failed (non-critical):`, pushError);
                     }
-                } catch (pushError) {
-                    // Log push error but don't throw - notification is already saved
-                    console.error(`[NotificationService.send] Push notification failed (non-critical):`, pushError);
+                } else {
+                    console.log(`[NotificationService.send] No valid push token for user ${userId} - saved to DB only`);
                 }
             } else {
-                console.log(`[NotificationService.send] No valid push token for user ${userId} - saved to DB only`);
+                console.log(`[NotificationService.send] 🔕 Push suppressed by user preference`);
             }
 
             console.log(`[NotificationService.send] ✅ COMPLETE`);
@@ -192,6 +212,36 @@ class NotificationService {
         } catch (error) {
             console.error(`[NotificationService.deleteNotification] ERROR:`, error);
             throw error;
+        }
+    }
+
+    /**
+     * Check if user wants to receive this type of notification
+     * @param {User} user - User document
+     * @param {string} type - Notification Type
+     * @returns {boolean}
+     */
+    static checkPreference(user, type) {
+        if (!user.notificationPreferences) return true; // Default to true if no prefs
+
+        const prefs = user.notificationPreferences;
+
+        switch (type) {
+            case 'DRIVER_LOCATION_STARTED':
+                return prefs.serviceStart ?? true;
+            case 'PASSENGER_LOCATION_SHARED':
+                return prefs.locationRequest ?? true; // Mapping this to locationRequest for now
+            case 'PASSENGER_ABSENCE_REQUEST':
+                return prefs.attendanceRequest ?? true;
+            case 'INFO':
+                // Check if it's a "User Response" info (special case)
+                // If the system sends simple INFO messages, we might want to categorize them better.
+                // For now, let's assume INFO is generic/important unless it's explicitly promotional.
+                return true;
+            case 'ALERT':
+                return true; // Urgent alerts always go through
+            default:
+                return true;
         }
     }
 }

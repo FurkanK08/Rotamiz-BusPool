@@ -10,11 +10,15 @@ function AppContent() {
   return <RootNavigator />;
 }
 
+import { NotificationProvider } from './src/context/NotificationContext';
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <AppContent />
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

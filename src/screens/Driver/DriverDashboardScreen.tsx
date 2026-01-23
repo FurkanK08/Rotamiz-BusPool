@@ -6,11 +6,13 @@ import { Button } from '../../components/Button';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { api } from '../../services/api';
 import { ServiceRoute } from '../../types';
+import { useNotifications } from '../../context/NotificationContext';
 
 export const DriverDashboardScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const paramsUserId = route.params?.userId;
+    const { unreadCount } = useNotifications();
 
     const [services, setServices] = useState<ServiceRoute[]>([]);
     const [loading, setLoading] = useState(true);
@@ -127,7 +129,28 @@ export const DriverDashboardScreen = () => {
                     style={styles.profileButton}
                     onPress={() => navigation.navigate('Notifications')}
                 >
-                    <Text style={{ fontSize: 24 }}>🔔</Text>
+                    <View>
+                        <Text style={{ fontSize: 24 }}>🔔</Text>
+                        {unreadCount > 0 && (
+                            <View style={{
+                                position: 'absolute',
+                                right: -2,
+                                top: -2,
+                                backgroundColor: COLORS.error,
+                                borderRadius: 8,
+                                width: 16,
+                                height: 16,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                borderWidth: 1.5,
+                                borderColor: COLORS.white
+                            }}>
+                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </TouchableOpacity>
             </View>
 
