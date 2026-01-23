@@ -6,6 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants/theme';
 import { InteractiveNotification } from '../../components/NotificationTypes/InteractiveNotification';
 import { LocationNotification } from '../../components/NotificationTypes/LocationNotification';
+import * as Notifications from 'expo-notifications';
+import { navigationRef } from '../../navigation';
+import { useNotifications } from '../../context/NotificationContext';
 
 // Define Notification Type
 interface Notification {
@@ -23,20 +26,47 @@ export const NotificationsScreen = ({ navigation }: any) => {
     const { userId } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(false);
+    const { refreshUnreadCount } = useNotifications();
 
-    // Add settings icon to header
+    // Header Actions
     useLayoutEffect(() => {
         navigation.setOptions({
             headerRight: () => (
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('NotificationSettings')}
-                    style={{ marginRight: 16 }}
-                >
-                    <Ionicons name="settings-outline" size={24} color={COLORS.primary} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={handleMarkAllRead}
+                        style={{ marginRight: 16 }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons name="checkmark-done-outline" size={24} color={COLORS.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={handleDeleteAll}
+                        style={{ marginRight: 16 }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons name="trash-outline" size={24} color={COLORS.error} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('NotificationSettings')}
+                        style={{ marginRight: 16 }}
+                    >
+                        <Ionicons name="settings-outline" size={24} color={COLORS.primary} />
+                    </TouchableOpacity>
+                </View>
             ),
         });
-    }, [navigation]);
+    }, [navigation, userId, notifications]);
+
+    // Real-time listener for new notifications
+    useEffect(() => {
+        const subscription = Notifications.addNotificationReceivedListener(notification => {
+            console.log("New notification received while in screen, refreshing...");
+            fetchNotifications();
+            refreshUnreadCount();
+        });
+        return () => subscription.remove();
+    }, [userId]);
 
     const fetchNotifications = async () => {
         if (!userId) return;
@@ -55,6 +85,52 @@ export const NotificationsScreen = ({ navigation }: any) => {
         fetchNotifications();
     }, [userId]);
 
+    const handleMarkAllRead = async () => {
+        try {
+            const unreadIds = notifications.filter(n => !n.isRead).map(n => n._id);
+            if (unreadIds.length === 0) {
+                Alert.alert("Bilgi", "Okunmamış bildirim yok.");
+                return;
+            }
+
+            await Promise.all(unreadIds.map(id => api.notifications.markAsRead(id)));
+
+            Alert.alert("Başarılı", "Tüm bildirimler okundu olarak işaretlendi.");
+            fetchNotifications();
+            refreshUnreadCount();
+        } catch (e) {
+            console.error(e);
+            Alert.alert("Hata", "İşlem sırasında bir hata oluştu.");
+        }
+    };
+
+    const handleDeleteAll = async () => {
+        if (notifications.length === 0) return;
+
+        Alert.alert(
+            "Tümünü Sil",
+            "Tüm bildirimleri silmek istediğinize emin misiniz?",
+            [
+                { text: "İptal", style: "cancel" },
+                {
+                    text: "Sil", style: "destructive", onPress: async () => {
+                        try {
+                            const ids = notifications.map(n => n._id);
+                            await Promise.all(ids.map(id => api.notifications.delete(id)));
+                            setNotifications([]); // Clear local immediately
+                            Alert.alert("Başarılı", "Bildirimler temizlendi.");
+                            refreshUnreadCount();
+                        } catch (e) {
+                            console.error(e);
+                            Alert.alert("Hata", "Silme işleminde hata oluştu.");
+                            fetchNotifications(); // Revert/Refresh
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleNotificationPress = async (item: Notification) => {
         if (!item.isRead) {
             try {
@@ -62,6 +138,7 @@ export const NotificationsScreen = ({ navigation }: any) => {
                 setNotifications(prev =>
                     prev.map(n => n._id === item._id ? { ...n, isRead: true } : n)
                 );
+                refreshUnreadCount();
             } catch (error) {
                 console.error('Failed to mark read', error);
             }
@@ -69,7 +146,6 @@ export const NotificationsScreen = ({ navigation }: any) => {
 
         // Navigation Logic based on Type
         if (item.type === 'DRIVER_LOCATION_STARTED' || item.type === 'PASSENGER_LOCATION_SHARED') {
-            // Navigate directly to PassengerTracking with serviceId from notification data
             const serviceId = item.data?.serviceId;
             if (serviceId) {
                 navigation.navigate('PassengerTracking', { serviceId });
@@ -85,6 +161,7 @@ export const NotificationsScreen = ({ navigation }: any) => {
             setNotifications(prev =>
                 prev.map(n => n._id === item._id ? { ...n, response: responseValue, isRead: true } : n)
             );
+            refreshUnreadCount(); // Just in case responding marks as read backend side (usually it does)
             Alert.alert("Cevap Kaydedildi", `Cevabınız: ${responseValue}`);
         } catch (error) {
             Alert.alert("Hata", "Cevap gönderilemedi");

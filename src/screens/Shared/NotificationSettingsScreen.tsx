@@ -115,12 +115,8 @@ export const NotificationSettingsScreen = ({ navigation }: any) => {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <Text style={styles.headerTitle}>Bildirim Ayarları</Text>
-                    <Text style={styles.headerSubtitle}>
-                        Hangi bildirimleri almak istediğinizi seçin
-                    </Text>
+                {/* Header removed - using Native Header */}
+                <View style={{ marginBottom: SPACING.m }}>
                     {saving && <Text style={styles.savingText}>Kaydediliyor...</Text>}
                 </View>
 
