@@ -8,6 +8,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Map, MapMarker, Polyline } from '../../components/Map';
+import { AnimatedMarker } from '../../components/Map/AnimatedMarker';
 import { TopBanner } from '../../components/TopBanner';
 import { api } from '../../services/api';
 import { getOptimizedTrip } from '../../services/osmTripService';
@@ -643,12 +644,19 @@ export const ActiveTripScreen = () => {
                         // region={{...}} 
                         >
                             {/* Driver Marker */}
+                            {/* Driver Marker - ANIMATED */}
                             {location && (
-                                <MapMarker coordinate={location.coords}>
-                                    <View style={styles.busMarker}>
+                                <AnimatedMarker
+                                    coordinate={location.coords}
+                                    heading={location.coords.heading || 0}
+                                    duration={4000} // Slightly less than update interval (5000)
+                                    anchor={{ x: 0.5, y: 0.5 }}
+                                >
+                                    <View style={[styles.busMarker]}>
+                                        {/* Rotate the inner view or container based on heading */}
                                         <Text style={{ fontSize: 20 }}>🚌</Text>
                                     </View>
-                                </MapMarker>
+                                </AnimatedMarker>
                             )}
 
                             {/* Route Line */}

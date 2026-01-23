@@ -6,6 +6,7 @@ import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Map, MapMarker, Polyline } from '../../components/Map';
+import { AnimatedMarker } from '../../components/Map/AnimatedMarker';
 import * as Location from 'expo-location';
 
 export const PassengerTrackingScreen = () => {
@@ -298,12 +299,17 @@ export const PassengerTrackingScreen = () => {
                         style={styles.map}
                         location={driverLocation}
                     >
-                        {/* Driver Marker */}
-                        <MapMarker coordinate={driverLocation}>
+                        {/* Driver Marker - ANIMATED */}
+                        <AnimatedMarker
+                            coordinate={driverLocation}
+                            heading={(driverLocation as any).heading || 0}
+                            duration={2000} // Socket updates usually faster than polling
+                            anchor={{ x: 0.5, y: 0.5 }}
+                        >
                             <View style={styles.busMarker}>
                                 <Text style={{ fontSize: 32 }}>🚌</Text>
                             </View>
-                        </MapMarker>
+                        </AnimatedMarker>
 
                         {/* Passenger's Own Location (Blue Dot Style) */}
                         {passengerLocation && (
