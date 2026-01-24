@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, Alert, AppState, Modal, FlatList, TouchableOpacity } from 'react-native';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import { Button } from '../../components/Button';
@@ -7,7 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Map, MapMarker, Polyline } from '../../components/Map';
+import { RotamizMap, MapMarker, Polyline } from '../../components/Map';
 import { AnimatedMarker } from '../../components/Map/AnimatedMarker';
 import { TopBanner } from '../../components/TopBanner';
 import { api } from '../../services/api';
@@ -83,6 +83,16 @@ export const ActiveTripScreen = () => {
     const [attendance, setAttendance] = useState<any[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
 
+    // Map State
+    const [isFollowing, setIsFollowing] = useState(true);
+    const mapRef = useRef<any>(null);
+
+
+
+    // Buffer for Map Matching
+    const locationBuffer = useRef<any[]>([]);
+    const lastSnapTime = useRef<number>(0);
+
     useEffect(() => {
         // Start Timer
         const timerInterval = setInterval(() => {
@@ -102,6 +112,47 @@ export const ActiveTripScreen = () => {
                 }
             } catch (e) {
                 console.log("Initial data load error:", e);
+            }
+        };
+
+
+
+        const processMapMatching = async (newLocation: Location.LocationObject) => {
+            // Add to buffer
+            locationBuffer.current.push({
+                latitude: newLocation.coords.latitude,
+                longitude: newLocation.coords.longitude
+            });
+
+            const now = Date.now();
+            // Snap every 10 seconds or 5 points to save costs, but keep UI smooth
+            if (now - lastSnapTime.current > 10000 && locationBuffer.current.length >= 3) {
+                try {
+                    lastSnapTime.current = now;
+                    // Send to Google Roads API
+                    const snappedPoints = await api.routing.snapToRoad(locationBuffer.current);
+
+                    if (snappedPoints.length > 0) {
+                        const lastSnapped = snappedPoints[snappedPoints.length - 1];
+                        console.log('🛣️ Snapped to road:', lastSnapped);
+
+                        // Update current location visual to the snapped point
+                        // We keep original accuracy/speed/heading for context if needed, but override lat/lon
+                        setLocation(prev => prev ? {
+                            ...prev,
+                            coords: {
+                                ...prev.coords,
+                                latitude: lastSnapped.latitude,
+                                longitude: lastSnapped.longitude
+                            }
+                        } : null);
+                    }
+                    // Clear buffer but keep last point for continuity? No, clear all to avoid duplicates in next batch.
+                    // Actually, Roads API works best with history. Let's keep the last few.
+                    locationBuffer.current = locationBuffer.current.slice(-2);
+                } catch (e) {
+                    console.log('Map matching error:', e);
+                }
             }
         };
 
@@ -133,15 +184,18 @@ export const ActiveTripScreen = () => {
                 // Get fresh for accuracy
                 const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
                 setLocation(loc);
+                locationBuffer.current.push({ latitude: loc.coords.latitude, longitude: loc.coords.longitude }); // Init buffer
 
             } catch (e) {
                 console.log('Initial setup error:', e);
-                // Fallback default
                 setLocation({
                     coords: { latitude: 41.0082, longitude: 28.9784, accuracy: 0, altitude: 0, heading: 0, speed: 0 },
                     timestamp: Date.now()
                 } as any);
             }
+
+            // Initial center
+            setIsFollowing(true);
 
             // 3. Setup active service ID for background task
             await AsyncStorage.setItem('activeServiceId', serviceId);
@@ -163,10 +217,10 @@ export const ActiveTripScreen = () => {
                     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
                         // Battery Optimization: Balanced accuracy
                         accuracy: Location.Accuracy.Balanced,
-                        // Only update if moved 50m (was 10m)
-                        distanceInterval: 50,
-                        // Maximum every 5 seconds (was 2s)
-                        timeInterval: 5000,
+                        // Only update if moved 20m (was 50m) - Closer for better matching
+                        distanceInterval: 20,
+                        // Maximum every 3 seconds - Faster updates for matching buffer
+                        timeInterval: 3000,
                         foregroundService: {
                             notificationTitle: "Servis Konum Paylaşıyor 📍",
                             notificationBody: "Konumu görüntülemek için dokunun.",
@@ -182,6 +236,30 @@ export const ActiveTripScreen = () => {
             }
         };
 
+        // Foreground Location Polling (as backup or for UI smoothness when app is open)
+        // AND for hooking into Map Matching logic since Background Task runs in separate JS context
+        let locationWatcher: Location.LocationSubscription | null = null;
+        const setupWatcher = async () => {
+            locationWatcher = await Location.watchPositionAsync(
+                {
+                    accuracy: Location.Accuracy.High,
+                    distanceInterval: 10,
+                    timeInterval: 2000
+                },
+                (newLoc) => {
+                    // Determine if we should update UI directly or wait for snap
+                    // For immediate feedback, update UI raw, THEN snap later?
+                    // Or update only on snap? Updating raw is better for responsiveness.
+                    // We'll update RAW first, then SNAP will correction it asynchronously.
+                    setLocation(newLoc);
+
+                    // Process Map Matching
+                    processMapMatching(newLoc);
+                }
+            );
+        };
+        setupWatcher();
+
         loadServiceData(); // Call immediately
         startBackgroundTracking();
 
@@ -191,53 +269,6 @@ export const ActiveTripScreen = () => {
             setBannerMessage(`Yolcu ${data.passengerId} konumu alındı! 📍`);
             setBannerVisible(true);
         });
-
-        // --- SIMULATION MODE FOR TESTING ---
-        // If Service Code is 'TEST', simulate movement locally
-        let simInterval: NodeJS.Timeout;
-        const checkSimulation = async () => {
-            const services = await api.services.getDriverServices(driverId);
-            const currentService = services.find((s: any) => s._id === serviceId);
-
-            if (currentService?.code === 'TEST') {
-                console.log('🧪 TEST MODE DETECTED: Starting internal simulation...');
-                Alert.alert('Test Modu', 'Test servisi algılandı. Sürüş simülasyonu başlatılıyor.');
-
-                // Start from Merter/Zeytinburnu (West of passengers)
-                let lat = 41.0110;
-                let lon = 28.9150;
-
-                simInterval = setInterval(() => {
-                    // Move East/North-East along E5 roughly
-                    lat += 0.00005; // Slower latitude change
-                    lon += 0.00015; // Faster longitude change (moving East)
-
-                    const newLoc = {
-                        coords: {
-                            latitude: lat,
-                            longitude: lon,
-                            accuracy: 10,
-                            altitude: 0,
-                            heading: 0,
-                            speed: 10, // 10 m/s ~ 36 km/h
-                        },
-                        timestamp: Date.now(),
-                    };
-
-                    setLocation(newLoc as any);
-
-                    // CRITICAL FIX: Emit location via socket (was missing!)
-                    socketService.sendLocation(serviceId, {
-                        latitude: lat,
-                        longitude: lon,
-                    });
-
-                    console.log('🧪 Simulated location:', lat, lon);
-                }, 3000); // Every 3 seconds
-            }
-        };
-
-        checkSimulation();
 
         // Polling for Service Updates (incase new passengers join)
         const pollInterval = setInterval(async () => {
@@ -264,8 +295,9 @@ export const ActiveTripScreen = () => {
         return () => {
             clearInterval(timerInterval);
             clearInterval(pollInterval);
-            if (simInterval) clearInterval(simInterval);
+
             socketService.disconnect();
+            if (locationWatcher) locationWatcher.remove(); // Stop watcher
 
             Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).then(started => {
                 if (started) {
@@ -429,8 +461,8 @@ export const ActiveTripScreen = () => {
                         waypoints[1].latitude,
                         waypoints[1].longitude
                     );
-                    setRouteCoordinates(directRoute);
-                    console.log('📍 Direct route (no passengers):', directRoute.length, 'points');
+                    setRouteCoordinates(directRoute.coordinates || []);
+                    console.log('📍 Direct route (no passengers):', (directRoute.coordinates || []).length, 'points');
                     return;
                 }
 
@@ -520,7 +552,7 @@ export const ActiveTripScreen = () => {
                         p1.pickupLocation.latitude,
                         p1.pickupLocation.longitude
                     );
-                    fullRoute = [...fullRoute, ...seg1];
+                    fullRoute = [...fullRoute, ...(seg1.coordinates || [])];
 
                     for (let i = 0; i < orderedPoints.length - 1; i++) {
                         const start = orderedPoints[i];
@@ -529,7 +561,7 @@ export const ActiveTripScreen = () => {
                             start.pickupLocation.latitude, start.pickupLocation.longitude,
                             end.pickupLocation.latitude, end.pickupLocation.longitude
                         );
-                        fullRoute = [...fullRoute, ...seg];
+                        fullRoute = [...fullRoute, ...(seg.coordinates || [])];
                     }
 
                     if (serviceDestination) {
@@ -538,14 +570,14 @@ export const ActiveTripScreen = () => {
                             last.pickupLocation.latitude, last.pickupLocation.longitude,
                             serviceDestination.latitude, serviceDestination.longitude
                         );
-                        fullRoute = [...fullRoute, ...segLast];
+                        fullRoute = [...fullRoute, ...(segLast.coordinates || [])];
                     }
                 } else if (serviceDestination) {
                     const seg = await api.routing.getRoadRoute(
                         location!.coords.latitude, location!.coords.longitude,
                         serviceDestination.latitude, serviceDestination.longitude
                     );
-                    fullRoute = [...fullRoute, ...seg];
+                    fullRoute = [...fullRoute, ...(seg.coordinates || [])];
                 }
 
                 setRouteCoordinates(fullRoute);
@@ -563,26 +595,29 @@ export const ActiveTripScreen = () => {
 
     }, [passengers.length, attendance, serviceDestination]); // removed 'location.coords' to avoid spam, reruns when list changes.
 
-    const mapRef = React.useRef<any>(null);
+
+
+    // Follow Mode Logic: When location changes and isFollowing is active
+    useEffect(() => {
+        if (isFollowing && location?.coords && mapRef.current) {
+            mapRef.current.animateCamera({
+                center: {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                },
+                zoom: 17,
+                heading: location.coords.heading || 0,
+                pitch: 0, // Keep 2D for clarity, or set to 45 for 3D
+            }, { duration: 1000 });
+        }
+    }, [location, isFollowing]);
 
     const handleRecenter = () => {
-        if (location?.coords && mapRef.current) {
-            mapRef.current.animateToRegion({
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            }, 1000);
-        }
+        setIsFollowing(true);
     };
 
-    const handleZoomIn = async () => {
-        if (mapRef.current) {
-            const camera = await mapRef.current.getCamera();
-            camera.altitude /= 2;
-            camera.zoom += 1;
-            mapRef.current.animateCamera(camera);
-        }
+    const handleMapPan = () => {
+        if (isFollowing) setIsFollowing(false);
     };
 
     const handleZoomOut = async () => {
@@ -636,25 +671,30 @@ export const ActiveTripScreen = () => {
             <View style={styles.mapContainer}>
                 {location ? (
                     <View style={{ flex: 1 }}>
-                        <Map
-                            mapRef={mapRef}
+                        <RotamizMap
+                            ref={mapRef}
                             style={styles.map}
-                            location={location.coords}
-                        // Removing controlled region to allow pan/zoom
-                        // region={{...}} 
+                            initialRegion={{
+                                latitude: location.coords.latitude,
+                                longitude: location.coords.longitude,
+                                latitudeDelta: 0.01,
+                                longitudeDelta: 0.01,
+                            }}
+                            onPanDrag={handleMapPan}
+                            isFollowing={isFollowing}
+                            showFollowButton={!isFollowing}
+                            onFollowPress={handleRecenter}
                         >
-                            {/* Driver Marker */}
                             {/* Driver Marker - ANIMATED */}
                             {location && (
                                 <AnimatedMarker
                                     coordinate={location.coords}
                                     heading={location.coords.heading || 0}
-                                    duration={4000} // Slightly less than update interval (5000)
+                                    duration={3000} // Tuned for generic usage
                                     anchor={{ x: 0.5, y: 0.5 }}
                                 >
                                     <View style={[styles.busMarker]}>
-                                        {/* Rotate the inner view or container based on heading */}
-                                        <Text style={{ fontSize: 20 }}>🚌</Text>
+                                        <Text style={{ fontSize: 24 }}>🚌</Text>
                                     </View>
                                 </AnimatedMarker>
                             )}
@@ -687,20 +727,9 @@ export const ActiveTripScreen = () => {
                                     </MapMarker>
                                 ) : null;
                             })}
-                        </Map>
+                        </RotamizMap>
 
-                        {/* Map Controls (Top Right) */}
-                        <View style={styles.mapControls}>
-                            <TouchableOpacity style={styles.controlBtn} onPress={handleZoomIn}>
-                                <Text style={styles.controlText}>+</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.controlBtn} onPress={handleZoomOut}>
-                                <Text style={styles.controlText}>-</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.controlBtn, { marginTop: 10 }]} onPress={handleRecenter}>
-                                <Text style={styles.controlText}>🎯</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {/* Auto-generated controls by RotamizMap, or we can keep custom if needed */}
                     </View>
                 ) : (
                     <View style={styles.loadingContainer}>
@@ -786,6 +815,8 @@ export const ActiveTripScreen = () => {
                     />
                 </View>
             </Modal>
+
+
 
             <View style={styles.overlay}>
                 <View style={styles.statusHeader}>

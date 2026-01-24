@@ -1,23 +1,40 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import AppLogger from '../utils/logger';
+import { googleMapsService } from './googleMapsService';
 
 // Environment-based URL configuration
 const getApiUrl = () => {
-    // Check if running in development
+    // If we have an explicit ENV var, use it (Production)
+    if (process.env.API_URL) {
+        return process.env.API_URL;
+    }
+
+    // Dynamic Development URL
     if (__DEV__) {
-        // For Android Emulator
+        // 1. Try to get IP from Expo Go Host URI (Physical Device support)
+        const debuggerHost = Constants.expoConfig?.hostUri;
+        if (debuggerHost) {
+            const ip = debuggerHost.split(':')[0];
+            return `http://${ip}:5000/api`;
+        }
+
+        // 2. Fallback for Android Emulator
         return 'http://10.0.2.2:5000/api';
     }
-    // Production URL (update when deploying)
-    return process.env.API_URL || 'http://10.0.2.2:5000/api';
+
+    // Default Fallback
+    return 'http://10.0.2.2:5000/api';
 };
 
 const API_URL = getApiUrl();
+console.log('🌐 API URL configured as:', API_URL);
 
 // Token storage keys
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'user_data';
+
+// ... (tokenService remains same) ...
 
 // Token management
 export const tokenService = {
@@ -55,6 +72,26 @@ const getAuthHeaders = async () => {
     return headers;
 };
 
+// Robust Response Handler
+const handleResponse = async (response: Response, endpoint: string) => {
+    const text = await response.text();
+    try {
+        const data = JSON.parse(text);
+        if (!response.ok) {
+            throw new Error(data.msg || data.message || `API Error: ${response.status}`);
+        }
+        return data;
+    } catch (e: any) {
+        // If it's already an error thrown above, rethrow
+        if (e.message && e.message.startsWith('API Error')) throw e;
+        if (e.message && (e.message.startsWith('Join failed') || e.message.startsWith('Add passenger failed'))) throw e;
+
+        // Otherwise it's a JSON parse error
+        console.error(`❌ API Parse Error at ${endpoint}:`, text.substring(0, 200)); // Log first 200 chars
+        throw new Error(`Invalid Server Response: ${text.substring(0, 50)}...`);
+    }
+};
+
 export const api = {
     auth: {
         login: async (phoneNumber: string) => {
@@ -64,7 +101,7 @@ export const api = {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phoneNumber }),
                 });
-                const data = await response.json();
+                const data = await handleResponse(response, '/auth/login');
 
                 // Save token and user if login successful
                 if (data.token) {
@@ -89,14 +126,7 @@ export const api = {
                     headers,
                     body: JSON.stringify({ userId, name, role }),
                 });
-                const data = await response.json();
-
-                // Update stored user data
-                if (data.user) {
-                    await tokenService.saveUser(data.user);
-                }
-
-                return data;
+                return await handleResponse(response, '/auth/profile');
             } catch (error) {
                 console.error('Profile Update Error:', error);
                 throw error;
@@ -122,7 +152,7 @@ export const api = {
                     headers,
                     body: JSON.stringify({ driverId, name, plate, schedules, destination }),
                 });
-                return await response.json();
+                return await handleResponse(response, '/services/create');
             } catch (error) {
                 console.error('Create Service Error:', error);
                 throw error;
@@ -134,7 +164,7 @@ export const api = {
             try {
                 const url = `${API_URL}/services/driver/${driverId}`;
                 const response = await fetch(url);
-                const data = await response.json();
+                const data = await handleResponse(response, `/services/driver/${driverId}`);
                 AppLogger.apiResponse(url, response.status, data);
                 return data;
             } catch (error) {
@@ -233,9 +263,7 @@ export const api = {
                 console.log('[API] Fetching:', url);
                 const response = await fetch(url);
                 console.log('[API] Response status:', response.status);
-                const data = await response.json();
-                console.log('[API] Response data:', JSON.stringify(data));
-                return data;
+                return await handleResponse(response, `/services/passenger/${passengerId}`);
             } catch (error) {
                 console.error('[API] Get Passenger Services Error:', error);
                 throw error;
@@ -250,7 +278,7 @@ export const api = {
                     headers,
                     body: JSON.stringify({ latitude, longitude, address, addressDetail }),
                 });
-                return await response.json();
+                return await handleResponse(response, '/users/location');
             } catch (error) {
                 console.error('Update Location Error:', error);
                 throw error;
@@ -406,25 +434,30 @@ export const api = {
     routing: {
         getRoadRoute: async (startLat: number, startLon: number, endLat: number, endLon: number) => {
             try {
-                // Using OSRM Public API (Demo Server - For testing only)
-                // In production, you should host your own OSRM or use a paid service like Mapbox/Google
-                const url = `http://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=geojson`;
-                const response = await fetch(url);
-                const data = await response.json();
+                // NEW: Use Google Maps Routes API (Traffic Aware)
+                const route = await googleMapsService.getRoute(
+                    { latitude: startLat, longitude: startLon },
+                    { latitude: endLat, longitude: endLon }
+                );
 
-                if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-                    return [];
+                if (!route) {
+                    return { coordinates: [], distance: 0, duration: 0 };
                 }
 
-                // Convert [lon, lat] to { latitude, longitude }
-                return data.routes[0].geometry.coordinates.map((coord: number[]) => ({
-                    latitude: coord[1],
-                    longitude: coord[0]
-                }));
+                return {
+                    coordinates: route.coordinates,
+                    distance: route.distance, // meters
+                    duration: route.duration  // seconds
+                };
             } catch (error) {
                 console.error('Routing Error:', error);
-                return [];
+                return { coordinates: [], distance: 0, duration: 0 };
             }
+        },
+
+        // Expose Roads API for Map Matching
+        snapToRoad: async (coordinates: any[]) => {
+            return await googleMapsService.snapToRoads(coordinates);
         }
     }
 };

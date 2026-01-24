@@ -5,7 +5,7 @@ import { Button } from '../../components/Button';
 import { socketService } from '../../services/socket';
 import { api } from '../../services/api';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Map, MapMarker, Polyline } from '../../components/Map';
+import { RotamizMap, MapMarker, Polyline, PulsingMarker } from '../../components/Map';
 import { AnimatedMarker } from '../../components/Map/AnimatedMarker';
 import * as Location from 'expo-location';
 
@@ -24,6 +24,7 @@ export const PassengerTrackingScreen = () => {
     const [routeCoordinates, setRouteCoordinates] = useState<any[]>([]);
     const [serviceDestination, setServiceDestination] = useState<any>(null);
     const mapRef = React.useRef<any>(null);
+    const [isFollowing, setIsFollowing] = useState(false); // Default false for passenger, let them choose or auto-fit handles it
 
     const [userLocation, setUserLocation] = useState<any>(null);
 
@@ -294,10 +295,21 @@ export const PassengerTrackingScreen = () => {
         <View style={styles.container}>
             <View style={styles.mapContainer}>
                 <View style={{ flex: 1 }}>
-                    <Map
-                        mapRef={mapRef}
+                    <RotamizMap
+                        ref={mapRef}
                         style={styles.map}
-                        location={driverLocation}
+                        initialRegion={{
+                            latitude: driverLocation.latitude,
+                            longitude: driverLocation.longitude,
+                            latitudeDelta: 0.02,
+                            longitudeDelta: 0.02,
+                        }}
+                        fitToElements={!isFollowing} // Auto-fit if not explicitly following a mode
+                        elementsToFit={[
+                            driverLocation,
+                            passengerLocation,
+                            serviceDestination ? { latitude: serviceDestination.latitude, longitude: serviceDestination.longitude } : null
+                        ].filter(Boolean) as any}
                     >
                         {/* Driver Marker - ANIMATED */}
                         <AnimatedMarker
@@ -311,12 +323,10 @@ export const PassengerTrackingScreen = () => {
                             </View>
                         </AnimatedMarker>
 
-                        {/* Passenger's Own Location (Blue Dot Style) */}
+                        {/* Passenger's Own Location (Blue Dot Style) - PULSING */}
                         {passengerLocation && (
                             <MapMarker coordinate={passengerLocation} zIndex={2}>
-                                <View style={styles.myLocationOuter}>
-                                    <View style={styles.myLocationInner} />
-                                </View>
+                                <PulsingMarker color={COLORS.primary} size={20} />
                             </MapMarker>
                         )}
 
@@ -340,7 +350,7 @@ export const PassengerTrackingScreen = () => {
                                 strokeWidth={4}
                             />
                         )}
-                    </Map>
+                    </RotamizMap>
 
                     {/* Map Controls */}
                     <View style={styles.mapControls}>

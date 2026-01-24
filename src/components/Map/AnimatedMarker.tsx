@@ -47,9 +47,19 @@ export const AnimatedMarker: React.FC<AnimatedMarkerProps> = ({
             animatedCoordinate.timing(coordConfig).start();
         }
 
-        // Animate Heading
+        // Animate Heading (Smart Interpolation)
+        // Find shortest path to next heading (e.g., 350 -> 10 should be +20, not -340)
+        let currentHeading = (animatedHeading as any)._value || 0;
+        let diff = (heading || 0) - currentHeading;
+
+        // Normalize diff to -180 to 180
+        while (diff > 180) diff -= 360;
+        while (diff < -180) diff += 360;
+
+        const targetHeading = currentHeading + diff;
+
         Animated.timing(animatedHeading, {
-            toValue: heading || 0,
+            toValue: targetHeading,
             duration: duration,
             useNativeDriver: false, // Provide false for View style transform compatibility on some Map versions or ensure true if safe
         }).start();
