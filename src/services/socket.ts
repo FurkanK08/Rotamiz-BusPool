@@ -61,6 +61,11 @@ class SocketService {
 
     subscribeToPassengerLocation(callback: (data: any) => void) {
         this.socket?.on('driverReceivePassengerLocation', callback);
+        return {
+            unsubscribe: () => {
+                this.socket?.off('driverReceivePassengerLocation', callback);
+            }
+        };
     }
 
     disconnect() {
