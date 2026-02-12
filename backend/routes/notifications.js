@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const NotificationService = require('../services/notificationService');
+const { authMiddleware } = require('../middleware/auth');
 
 /**
  * PRODUCTION-READY Notification Routes
@@ -9,7 +10,7 @@ const NotificationService = require('../services/notificationService');
 
 // GET /notifications?userId=...
 // Retrieve all notifications for a user
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
     try {
         const { userId } = req.query;
         console.log(`[GET /notifications] Request from userId: ${userId}`);
@@ -36,7 +37,7 @@ router.get('/', async (req, res) => {
 
 // PUT /notifications/:id/read
 // Mark a specific notification as read
-router.put('/:id/read', async (req, res) => {
+router.put('/:id/read', authMiddleware, async (req, res) => {
     try {
         console.log(`[PUT /notifications/:id/read] Marking ${req.params.id} as read`);
 
@@ -58,7 +59,7 @@ router.put('/:id/read', async (req, res) => {
 
 // DELETE /notifications/:id
 // Delete a specific notification
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         console.log(`[DELETE /notifications/:id] Deleting ${req.params.id}`);
 
@@ -83,7 +84,7 @@ router.delete('/:id', async (req, res) => {
 
 // POST /notifications/:id/respond
 // Respond to an interactive notification
-router.post('/:id/respond', async (req, res) => {
+router.post('/:id/respond', authMiddleware, async (req, res) => {
     try {
         const { response } = req.body;
         console.log(`[POST /notifications/:id/respond] ID: ${req.params.id}, response: ${response}`);
@@ -148,7 +149,7 @@ router.post('/:id/respond', async (req, res) => {
 
 // POST /notifications/test
 // Test endpoint for development
-router.post('/test', async (req, res) => {
+router.post('/test', authMiddleware, async (req, res) => {
     try {
         const { userId, title, body, type, data } = req.body;
         console.log(`[POST /notifications/test] Creating test notification for user: ${userId}`);

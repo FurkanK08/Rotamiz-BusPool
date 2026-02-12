@@ -1,6 +1,11 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    console.error('⚠️  UYARI: JWT_SECRET ortam değişkeni tanımlı değil! Lütfen .env dosyasına JWT_SECRET ekleyin.');
+    // In production, you might want to: process.exit(1);
+}
 
 // Middleware to verify JWT token
 const authMiddleware = (req, res, next) => {

@@ -6,24 +6,34 @@ require('dotenv').config();
 const http = require('http');
 const { Server } = require('socket.io');
 
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:8081', 'http://localhost:19006', 'http://10.0.2.2:8081'];
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*", // Allow all origins for MVP
-        methods: ["GET", "POST"]
+        origin: function (origin, callback) {
+            // Allow requests with no origin (mobile apps, React Native)
+            if (!origin) return callback(null, true);
+            if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+                return callback(null, true);
+            }
+            return callback(new Error('CORS policy violation'), false);
+        },
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
 const { requestLogger, errorLogger, clearLog, writeLog } = require('./middleware/logger');
+const { generalLimiter, authLimiter } = require('./middleware/rateLimiter');
 
 // Clear log on startup
 clearLog();
 
 const PORT = process.env.PORT || 5000;
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:8081', 'http://localhost:19006', 'http://10.0.2.2:8081'];
 
 // Middleware
 app.use(cors({
@@ -40,6 +50,10 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+
+// Rate limiting
+app.use('/api/', generalLimiter);
+app.use('/api/auth', authLimiter);
 
 // Add request logging middleware
 app.use(requestLogger);

@@ -12,7 +12,7 @@ const { authMiddleware } = require('../middleware/auth');
 // @route   POST api/services/create
 // @desc    Create a new service route
 // @access  Private (Driver only)
-router.post('/create', async (req, res) => {
+router.post('/create', authMiddleware, async (req, res) => {
     const { driverId, name, plate, schedules, destination } = req.body;
 
     if (!driverId || !name || !plate) {
@@ -56,7 +56,7 @@ router.post('/create', async (req, res) => {
 // @route   GET api/services/driver/:driverId
 // @desc    Get all services for a driver
 // @access  Private
-router.get('/driver/:driverId', async (req, res) => {
+router.get('/driver/:driverId', authMiddleware, async (req, res) => {
     try {
         const services = await Service.find({ driver: req.params.driverId })
             .populate('passengers', 'name phoneNumber pickupLocation');
@@ -70,7 +70,7 @@ router.get('/driver/:driverId', async (req, res) => {
 // @route   GET api/services/:id
 // @desc    Get a single service by ID
 // @access  Private
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const service = await Service.findById(req.params.id)
             .populate('passengers', 'name phoneNumber pickupLocation');
@@ -90,7 +90,7 @@ router.get('/:id', async (req, res) => {
 // @route   POST api/services/join
 // @desc    Join a service via code
 // @access  Private (Passenger)
-router.post('/join', async (req, res) => {
+router.post('/join', authMiddleware, async (req, res) => {
     const { passengerId, code, pickupLocation } = req.body;
 
     if (!passengerId || !code) {
@@ -136,7 +136,7 @@ router.post('/join', async (req, res) => {
 // @route   GET api/services/passenger/:passengerId
 // @desc    Get ALL services for a passenger
 // @access  Private
-router.get('/passenger/:passengerId', async (req, res) => {
+router.get('/passenger/:passengerId', authMiddleware, async (req, res) => {
     try {
         // Find ALL services where passengers array contains the ID
         const services = await Service.find({ passengers: req.params.passengerId })
@@ -152,7 +152,7 @@ router.get('/passenger/:passengerId', async (req, res) => {
 // @route   PUT api/services/:id
 // @desc    Update a service
 // @access  Private (Driver only)
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
     const { name, plate, schedules, active } = req.body;
 
     console.log(`[PUT /services/:id] Request body:`, req.body);
@@ -221,7 +221,7 @@ router.put('/:id', async (req, res) => {
 // @route   DELETE api/services/:id
 // @desc    Delete a service
 // @access  Private (Driver only)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         let service = await Service.findById(req.params.id);
 
@@ -266,7 +266,7 @@ router.post('/remove-passenger', async (req, res) => {
 // @route   POST api/services/add-passenger
 // @desc    Add a passenger to a service manually by phone number
 // @access  Private (Driver only)
-router.post('/add-passenger', async (req, res) => {
+router.post('/add-passenger', authMiddleware, async (req, res) => {
     const { serviceId, phoneNumber } = req.body;
 
     if (!serviceId || !phoneNumber) {
