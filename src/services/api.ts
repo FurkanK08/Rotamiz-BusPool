@@ -114,6 +114,18 @@ export const api = {
     },
 
     services: {
+        getById: async (serviceId: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/services/${serviceId}`, { headers });
+                if (!response.ok) throw new Error('Servis bulunamadı');
+                return await response.json();
+            } catch (error) {
+                console.error('Get Service Error:', error);
+                throw error;
+            }
+        },
+
         create: async (driverId: string, name: string, plate: string, schedules: string[], destination?: any) => {
             try {
                 const headers = await getAuthHeaders();

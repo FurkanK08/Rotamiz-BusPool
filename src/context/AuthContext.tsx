@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { tokenService } from '../services/api';
 
 interface AuthContextType {
     userId: string;
     role: string;
     setAuth: (userId: string, role: string) => void;
     clearAuth: () => void;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -12,6 +14,7 @@ const AuthContext = createContext<AuthContextType>({
     role: '',
     setAuth: () => { },
     clearAuth: () => { },
+    logout: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -34,8 +37,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setRole('');
     };
 
+    const logout = async () => {
+        await tokenService.clearAll();
+        clearAuth();
+    };
+
     return (
-        <AuthContext.Provider value={{ userId, role, setAuth, clearAuth }}>
+        <AuthContext.Provider value={{ userId, role, setAuth, clearAuth, logout }}>
             {children}
         </AuthContext.Provider>
     );

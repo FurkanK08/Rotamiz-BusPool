@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import { Button } from '../../components/Button';
 import { Input } from '../../components/Input';
@@ -12,6 +12,24 @@ export const ServiceDetailScreen = () => {
     const { service: initialService } = route.params;
     const [service, setService] = useState(initialService);
     const [loading, setLoading] = useState(false);
+
+    // Fetch fresh service data whenever screen is focused
+    useFocusEffect(
+        useCallback(() => {
+            const fetchService = async () => {
+                try {
+                    const freshService = await api.services.getById(initialService._id);
+                    if (freshService) {
+                        setService(freshService);
+                    }
+                } catch (error) {
+                    console.error('Servis verisi güncellenemedi:', error);
+                    // Keep showing stale data as fallback
+                }
+            };
+            fetchService();
+        }, [initialService._id])
+    );
 
     // Add Passenger State
     const [modalVisible, setModalVisible] = useState(false);

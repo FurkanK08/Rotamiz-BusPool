@@ -4,11 +4,13 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import { Button } from '../../components/Button';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export const PassengerSettingsScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const { userId, serviceId } = route.params || {};
+    const { logout } = useAuth();
 
     const handleLeaveService = () => {
         Alert.alert(
@@ -36,11 +38,28 @@ export const PassengerSettingsScreen = () => {
     };
 
     const handleLogout = () => {
-        // Simple logout for MVP (just resets nav)
-        navigation.reset({
-            index: 0,
-            routes: [{ name: 'Login' }],
-        });
+        Alert.alert(
+            'Çıkış Yap',
+            'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+            [
+                { text: 'İptal', style: 'cancel' },
+                {
+                    text: 'Çıkış Yap',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await logout();
+                        } catch (error) {
+                            // Fallback: even if logout fails, reset navigation
+                            navigation.reset({
+                                index: 0,
+                                routes: [{ name: 'Login' }],
+                            });
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     return (

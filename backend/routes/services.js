@@ -24,10 +24,16 @@ router.post('/create', async (req, res) => {
         // Simple logic for MVP: Random 1000-9999
         let code;
         let isUnique = false;
+        let attempts = 0;
+        const MAX_ATTEMPTS = 100;
         while (!isUnique) {
+            if (attempts >= MAX_ATTEMPTS) {
+                return res.status(500).json({ msg: 'Benzersiz servis kodu oluşturulamadı. Lütfen tekrar deneyin.' });
+            }
             code = Math.floor(1000 + Math.random() * 9000).toString();
             const existing = await Service.findOne({ code });
             if (!existing) isUnique = true;
+            attempts++;
         }
 
         const service = new Service({
@@ -57,6 +63,26 @@ router.get('/driver/:driverId', async (req, res) => {
         res.json(services);
     } catch (err) {
         console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   GET api/services/:id
+// @desc    Get a single service by ID
+// @access  Private
+router.get('/:id', async (req, res) => {
+    try {
+        const service = await Service.findById(req.params.id)
+            .populate('passengers', 'name phoneNumber pickupLocation');
+        if (!service) {
+            return res.status(404).json({ msg: 'Servis bulunamadı' });
+        }
+        res.json(service);
+    } catch (err) {
+        console.error(err.message);
+        if (err.kind === 'ObjectId') {
+            return res.status(404).json({ msg: 'Servis bulunamadı' });
+        }
         res.status(500).send('Server Error');
     }
 });

@@ -36,7 +36,7 @@ const ServiceSchema = new mongoose.Schema({
     attendance: [{
         date: String, // YYYY-MM-DD
         passengerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        status: { type: String, enum: ['BINDI', 'BINMEDI', 'BEKLIYOR'], default: 'BEKLIYOR' }
+        status: { type: String, enum: ['BINDI', 'BINMEDI', 'BEKLIYOR', 'GELMEYECEK'], default: 'BEKLIYOR' }
     }],
     createdAt: {
         type: Date,

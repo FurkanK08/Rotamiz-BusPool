@@ -136,7 +136,7 @@ export const useDriverTrip = (serviceId: string, driverId: string) => {
                     }
                     const { latitude, longitude } = p.pickupLocation;
                     if (latitude === 0 || longitude === 0) {
-                        console.warn(`Passenger ${p._did} has invalid pickupLocation (0,0).`);
+                        console.warn(`Passenger ${p._id} has invalid pickupLocation (0,0).`);
                         return false;
                     }
                     return true;
