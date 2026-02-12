@@ -15,14 +15,32 @@ class SocketService {
 
     connect() {
         if (!this.socket) {
-            this.socket = io(SOCKET_URL);
+            this.socket = io(SOCKET_URL, {
+                reconnection: true,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
+            });
 
             this.socket.on('connect', () => {
                 console.log('Socket Connected:', this.socket?.id);
             });
 
-            this.socket.on('disconnect', () => {
-                console.log('Socket Disconnected');
+            this.socket.on('disconnect', (reason) => {
+                console.log('Socket Disconnected:', reason);
+            });
+
+            this.socket.on('reconnect_attempt', (attempt) => {
+                console.log(`Socket reconnection attempt ${attempt}...`);
+            });
+
+            this.socket.on('reconnect_failed', () => {
+                console.error('Socket reconnection failed after max attempts');
+            });
+
+            this.socket.on('connect_error', (error) => {
+                console.warn('Socket connection error:', error.message);
             });
         }
     }
