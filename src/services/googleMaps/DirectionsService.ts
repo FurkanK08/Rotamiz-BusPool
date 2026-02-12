@@ -37,6 +37,7 @@ export const DirectionsService = {
 
             if (response.data.status !== 'OK') {
                 console.error('Google Directions API Error:', response.data.status, response.data.error_message);
+                console.log('Failed Params:', JSON.stringify(params));
                 return null;
             }
 

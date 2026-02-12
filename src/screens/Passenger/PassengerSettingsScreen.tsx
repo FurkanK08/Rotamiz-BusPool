@@ -50,7 +50,9 @@ export const PassengerSettingsScreen = () => {
                         try {
                             await logout();
                         } catch (error) {
-                            // Fallback: even if logout fails, reset navigation
+                            console.error('Logout error:', error);
+                        } finally {
+                            // Always reset navigation to Login, whether logout API succeeded or failed locally
                             navigation.reset({
                                 index: 0,
                                 routes: [{ name: 'Login' }],

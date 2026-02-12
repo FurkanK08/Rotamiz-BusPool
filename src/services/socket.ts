@@ -58,7 +58,11 @@ class SocketService {
     }
 
     requestPassengerLocation(serviceId: string) {
-        this.socket?.emit('requestPassengerLocation', { serviceId });
+        if (!this.socket) {
+            console.warn('Socket not connected, cannot request location');
+            return;
+        }
+        this.socket.emit('requestPassengerLocation', { serviceId });
     }
 
     sendPassengerLocation(serviceId: string, passengerId: string, location: any) {
@@ -67,14 +71,29 @@ class SocketService {
 
     subscribeToLocationUpdates(callback: (location: any) => void) {
         this.socket?.on('receiveLocation', callback);
+        return {
+            unsubscribe: () => {
+                this.socket?.off('receiveLocation', callback);
+            }
+        };
     }
 
     subscribeToServiceStop(callback: () => void) {
         this.socket?.on('serviceStopped', callback);
+        return {
+            unsubscribe: () => {
+                this.socket?.off('serviceStopped', callback);
+            }
+        };
     }
 
     subscribeToLocationRequest(callback: () => void) {
         this.socket?.on('shareLocationRequest', callback);
+        return {
+            unsubscribe: () => {
+                this.socket?.off('shareLocationRequest', callback);
+            }
+        };
     }
 
     subscribeToPassengerLocation(callback: (data: any) => void) {

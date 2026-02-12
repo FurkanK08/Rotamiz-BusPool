@@ -144,8 +144,9 @@ export const api = {
         getDriverServices: async (driverId: string) => {
             AppLogger.apiRequest('GET', `/services/driver/${driverId}`);
             try {
+                const headers = await getAuthHeaders();
                 const url = `${API_URL}/services/driver/${driverId}`;
-                const response = await fetch(url);
+                const response = await fetch(url, { headers });
                 const data = await response.json();
                 AppLogger.apiResponse(url, response.status, data);
                 return data;
@@ -243,7 +244,8 @@ export const api = {
             try {
                 const url = `${API_URL}/services/passenger/${passengerId}`;
                 console.log('[API] Fetching:', url);
-                const response = await fetch(url);
+                const headers = await getAuthHeaders();
+                const response = await fetch(url, { headers });
                 console.log('[API] Response status:', response.status);
                 const data = await response.json();
                 console.log('[API] Response data:', JSON.stringify(data));

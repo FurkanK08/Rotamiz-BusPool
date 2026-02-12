@@ -16,7 +16,8 @@ export const LoginScreen = () => {
         setLoading(true);
         try {
             // Call Backend API
-            const data = await api.auth.login(phoneNumber);
+            const formattedPhone = phoneNumber.replace(/\s/g, '');
+            const data = await api.auth.login(formattedPhone);
 
             if (data && data.user) {
                 // If successful, navigate to OTP (Passthrough for now) or directly to next step

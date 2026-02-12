@@ -26,8 +26,22 @@ export const PassengerTrackingScreen = () => {
         routeCoordinates,
         eta,
         distance,
-        isLoadingRoute
+        isLoadingRoute,
+        isServiceStopped
     } = useLiveTracking(serviceId, userId);
+
+    // Handle Service Stop
+    useEffect(() => {
+        if (isServiceStopped) {
+            Alert.alert(
+                'Sefer Bitti',
+                'Sürücü seferi sonlandırdı.',
+                [
+                    { text: 'Tamam', onPress: () => navigation.navigate('PassengerHome') }
+                ]
+            );
+        }
+    }, [isServiceStopped]);
 
     // 2. Bottom Sheet Animation
     const panY = useRef(new Animated.Value(0)).current;

@@ -15,8 +15,9 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
     const [eta, setEta] = useState<string | null>(null);
     const [distance, setDistance] = useState<string | null>(null);
     const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+    const [isServiceStopped, setIsServiceStopped] = useState(false);
 
-    // Refs for throttling
+    // Refs for throttling & socket access
     const lastRouteCalcTime = useRef<number>(0);
     const driverLocationRef = useRef<any>(null);
     const passengerLocationRef = useRef<any>(null);
@@ -60,48 +61,66 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
         };
     }, []);
 
-    // 2. Socket Connection & Driver Updates
+    // 2. Socket Connection & Event Handling
     useEffect(() => {
         if (!serviceId) return;
 
         socketService.connect();
         socketService.joinService(serviceId);
 
-        const handleLocationUpdate = (newLocation: any) => {
+        // Location Updates
+        const locSub = socketService.subscribeToLocationUpdates((newLocation) => {
             setDriverLocation(newLocation);
-        };
+        });
 
-        socketService.subscribeToLocationUpdates(handleLocationUpdate);
+        // Service Stopped
+        const stopSub = socketService.subscribeToServiceStop(() => {
+            setIsServiceStopped(true);
+        });
+
+        // Location Request
+        const reqSub = socketService.subscribeToLocationRequest(() => {
+            const loc = passengerLocationRef.current;
+            if (loc && userId) {
+                console.log('[LiveTracking] Auto-sharing location per driver request');
+                socketService.sendPassengerLocation(serviceId, userId, loc);
+            }
+        });
 
         return () => {
+            locSub?.unsubscribe();
+            stopSub?.unsubscribe();
+            reqSub?.unsubscribe();
             socketService.disconnect();
         };
-    }, [serviceId]);
+    }, [serviceId, userId]);
 
     // 3. Route & ETA Calculation (Throttled)
-    // Uses a fixed interval instead of reacting to every location change
     const updateRouteAndEta = useCallback(async () => {
         const driver = driverLocationRef.current;
         const passenger = passengerLocationRef.current;
 
         if (!driver || !passenger) return;
 
-        // Throttle: skip if called too recently
+        // Throttle logic
         const now = Date.now();
-        if (now - lastRouteCalcTime.current < ROUTE_THROTTLE_MS) return;
-        lastRouteCalcTime.current = now;
+        // If calculated recently (within 30s) AND it's not the initial calculation (0), skip
+        if (now - lastRouteCalcTime.current < ROUTE_THROTTLE_MS && lastRouteCalcTime.current !== 0) return;
 
+        lastRouteCalcTime.current = now;
         setIsLoadingRoute(true);
 
         try {
-            // Fetch route from Google Directions
-            const routeResult = await DirectionsService.getRoute(driver, passenger);
+            // Parallel Fetch
+            const [routeResult, etaResult] = await Promise.all([
+                DirectionsService.getRoute(driver, passenger),
+                ETAService.getETA(driver, passenger)
+            ]);
+
             if (routeResult) {
                 setRouteCoordinates(routeResult.points);
             }
 
-            // Fetch ETA from Google Distance Matrix
-            const etaResult = await ETAService.getETA(driver, passenger);
             if (etaResult) {
                 setEta(etaResult.duration);
                 setDistance(etaResult.distance);
@@ -113,24 +132,18 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
         }
     }, []);
 
+    // Trigger update on location change (throttled inside function) or interval
     useEffect(() => {
         if (!driverLocation || !passengerLocation) return;
 
-        // Initial calculation (bypass throttle for first load)
-        if (lastRouteCalcTime.current === 0) {
-            lastRouteCalcTime.current = Date.now();
-            updateRouteAndEta();
-        }
+        // Attempt update (will be throttled if too frequent)
+        updateRouteAndEta();
 
-        // Refresh ETA every 60 seconds
+        // Backup Interval (e.g. traffic changes even if location same)
         const interval = setInterval(updateRouteAndEta, 60000);
 
         return () => clearInterval(interval);
-    }, [
-        // Only re-run effect when we get first valid pair
-        !!driverLocation,
-        !!passengerLocation
-    ]);
+    }, [driverLocation, passengerLocation, updateRouteAndEta]);
 
     return {
         driverLocation,
@@ -138,6 +151,7 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
         routeCoordinates,
         eta,
         distance,
-        isLoadingRoute
+        isLoadingRoute,
+        isServiceStopped
     };
 };

@@ -147,7 +147,6 @@ export const RootNavigator = () => {
                         title: 'Bildirimler',
                         headerTintColor: COLORS.primary,
                         headerTitleStyle: { color: COLORS.text },
-                        headerBackTitleVisible: false
                     }}
                 />
                 <Stack.Screen
@@ -158,7 +157,6 @@ export const RootNavigator = () => {
                         title: 'Bildirim Ayarları',
                         headerTintColor: COLORS.primary,
                         headerTitleStyle: { color: COLORS.text },
-                        headerBackTitleVisible: false
                     }}
                 />
             </Stack.Navigator>

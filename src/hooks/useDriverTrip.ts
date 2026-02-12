@@ -1,13 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { socketService } from '../services/socket';
 import { api } from '../services/api';
-import { getOptimizedTrip } from '../services/osmTripService';
-// We might switch this to Google Optimization if available/paid, but sticking to OSRM (existing) or Google Directions for now
-// The prompt said "Google Routes", which implies using Google Directions API even for the driver.
+// We stick to Google Directions for consistency
 import { DirectionsService } from '../services/googleMaps/DirectionsService';
 
 // Task name must match what was registered
@@ -21,6 +18,15 @@ export const useDriverTrip = (serviceId: string, driverId: string) => {
     const [attendance, setAttendance] = useState<any[]>([]);
     const [service, setService] = useState<any>(null);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+    // Refs for accessing latest state in intervals/callbacks
+    const locationRef = useRef<Location.LocationObject | null>(null);
+    const passengersRef = useRef<any[]>([]);
+    const attendanceRef = useRef<any[]>([]);
+
+    useEffect(() => { locationRef.current = location; }, [location]);
+    useEffect(() => { passengersRef.current = passengers; }, [passengers]);
+    useEffect(() => { attendanceRef.current = attendance; }, [attendance]);
 
     // 1. Initial Data Load
     useEffect(() => {
@@ -65,7 +71,7 @@ export const useDriverTrip = (serviceId: string, driverId: string) => {
             socketService.joinService(serviceId);
             api.services.updateService(serviceId, { active: true });
 
-            // Start Location Updates
+            // Start Location Updates (Background)
             const started = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
             if (!started) {
                 await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
@@ -110,73 +116,83 @@ export const useDriverTrip = (serviceId: string, driverId: string) => {
         };
     }, [serviceId]);
 
-    // 4. Route Calculation
-    useEffect(() => {
-        if (!location || passengers.length === 0) return;
+    // 4. Route Calculation Logic
+    const calculateRoute = useCallback(async () => {
+        const loc = locationRef.current;
+        const pas = passengersRef.current;
+        const att = attendanceRef.current;
 
-        const calculateRoute = async () => {
-            try {
-                // Simple logic: 
-                // Origin: Current Drive Location
-                // Destination: Last Passenger
-                // Waypoints: All others
-                // Google Directions API will optimize if we tell it to, or we respect order.
-                // DirectionsService acts as a wrapper.
+        if (!loc || pas.length === 0) return;
 
-                const activePassengers = passengers.filter(p => {
-                    const date = new Date().toISOString().split('T')[0];
-                    const record = attendance.find(r => r.passengerId === p._id && r.date === date);
-                    const status = record ? record.status : 'BEKLIYOR';
+        try {
+            // 1. Filter Active Passengers
+            const activePassengers = pas.filter(p => {
+                const date = new Date().toISOString().split('T')[0];
+                const record = att.find(r => r.passengerId === p._id && r.date === date);
+                const status = record ? record.status : 'BEKLIYOR';
 
-                    if (status === 'BINDI' || status === 'GELMEYECEK') return false;
+                // Skip passengers who already boarded or won't come
+                if (status === 'BINDI' || status === 'GELMEYECEK') return false;
 
-                    if (!p.pickupLocation) {
-                        console.warn(`Passenger ${p._id} has no pickupLocation.`);
-                        return false;
-                    }
-                    const { latitude, longitude } = p.pickupLocation;
-                    if (latitude === 0 || longitude === 0) {
-                        console.warn(`Passenger ${p._id} has invalid pickupLocation (0,0).`);
-                        return false;
-                    }
-                    return true;
-                });
-
-                if (activePassengers.length === 0) {
-                    setRouteCoordinates([]);
-                    console.log('No active passengers for route calculation.');
-                    return;
+                if (!p.pickupLocation || !p.pickupLocation.latitude) {
+                    return false;
                 }
+                return true;
+            });
 
-                const destination = activePassengers[activePassengers.length - 1].pickupLocation;
-                // Waypoints excluding the last one (which is destination)
-                const waypoints = activePassengers.slice(0, activePassengers.length - 1).map(p => p.pickupLocation);
-
-                console.log('Calculating Route...');
-                console.log('Origin:', location.coords);
-                console.log('Dest:', destination);
-                console.log('Waypoints:', waypoints);
-
-                const result = await DirectionsService.getRoute(
-                    location.coords,
-                    destination,
-                    waypoints
-                );
-
-                if (result) {
-                    setRouteCoordinates(result.points);
-                }
-            } catch (error) {
-                console.error("Route calculation error:", error);
+            if (activePassengers.length === 0) {
+                setRouteCoordinates([]);
+                return;
             }
-        };
 
-        // Calculate initially and when passenger status changes (attendance)
-        // We debounce or throttle this in production to save costs. 
-        // For now, let's run it on attendance change or initial load.
-        calculateRoute();
+            // 2. Determine Destination & Waypoints
+            // Logic: Assume last active passenger is destination for now
+            // Ideally, we should optimize or have a fixed destination (school/work)
+            const destination = activePassengers[activePassengers.length - 1].pickupLocation;
+            const waypoints = activePassengers.slice(0, activePassengers.length - 1).map(p => p.pickupLocation);
 
-    }, [attendance, passengers.length, !!location]); // Re-run when attendance changes or passengers loaded
+            // 3. Call Directions API
+            console.log('[useDriverTrip] Requesting Route:', {
+                origin: loc.coords,
+                destination,
+                waypointsCount: waypoints.length
+            });
+
+            const result = await DirectionsService.getRoute(
+                loc.coords,
+                destination,
+                waypoints
+            );
+
+            if (result) {
+                setRouteCoordinates(result.points);
+            }
+        } catch (error) {
+            console.error("Route calculation error:", error);
+        }
+    }, []);
+
+    // 5. Trigger Route Calculation
+    useEffect(() => {
+        // Calculate initially when data is ready
+        if (location && passengers.length > 0) {
+            calculateRoute();
+        }
+
+        // Re-calculate periodically (every 60s) to update ETA/Route from current location
+        const interval = setInterval(() => {
+            calculateRoute();
+        }, 60000);
+
+        return () => clearInterval(interval);
+    }, [
+        // Dependencies for effect re-run (not for calculation, refs handle that)
+        // We re-run if attendance changes to update waypoints immediately
+        attendance,
+        passengers.length,
+        // We add location existence check to start interval only when location is available
+        !!location
+    ]);
 
     return {
         location,

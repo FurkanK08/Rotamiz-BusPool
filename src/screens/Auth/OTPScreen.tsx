@@ -21,7 +21,14 @@ export const OTPScreen = () => {
         setTimeout(() => {
             setLoading(false);
 
-            if (existingUser && userRole && userName) {
+            // Log parameters for debugging
+            console.log('OTP Verify Params:', { existingUser, userRole, userId, userName });
+
+            // Check if we have complete user profile data
+            // We ignore 'existingUser' flag and check actual data presence
+            const hasProfile = userRole && userName;
+
+            if (hasProfile) {
                 // CRITICAL: Set auth context BEFORE navigation
                 setAuth(userId, userRole);
 
@@ -30,14 +37,17 @@ export const OTPScreen = () => {
                         index: 0,
                         routes: [{ name: 'DriverDashboard', params: { userId } }],
                     });
-                } else {
+                } else if (userRole === 'PASSENGER') {
                     navigation.reset({
                         index: 0,
                         routes: [{ name: 'PassengerHome', params: { userId } }],
                     });
+                } else {
+                    // Fallback for unknown role type
+                    navigation.navigate('RoleSelection', { userId });
                 }
             } else {
-                // For new users, pass to RoleSelection (setAuth will be called there)
+                // Missing name or role -> Go to Profile completion
                 navigation.navigate('RoleSelection', { userId });
             }
         }, 1000);

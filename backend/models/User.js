@@ -12,8 +12,8 @@ const UserSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['passenger', 'driver', 'admin'],
-        default: 'passenger'
+        enum: ['PASSENGER', 'DRIVER', 'ADMIN'],
+        default: 'PASSENGER'
     },
     pushToken: {
         type: String,

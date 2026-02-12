@@ -27,16 +27,20 @@ export const CommonMap: React.FC<CommonMapProps> = ({
     const internalRef = useRef<any>(null);
     const validRef = mapRef || internalRef;
 
+    // Prevent camera from jumping around on every update
+    const hasFittedRef = useRef(false);
+
     // Camera Logic
     useEffect(() => {
         if (!validRef.current) return;
 
-        if (role === 'PASSENGER' && driverLocation && userLocation) {
-            // Passenger View: Fit Driver & Self
+        if (role === 'PASSENGER' && driverLocation && userLocation && !hasFittedRef.current) {
+            // Passenger View: Fit Driver & Self ONLY ONCE initially
             validRef.current.fitToCoordinates([driverLocation, userLocation], {
                 edgePadding: { top: 100, right: 50, bottom: 350, left: 50 }, // Bottom padding for card
                 animated: true,
             });
+            hasFittedRef.current = true;
         }
 
         // Driver logic is usually manual or "Follow Mode", handled by parent or different logic

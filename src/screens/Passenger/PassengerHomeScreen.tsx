@@ -42,7 +42,13 @@ export const PassengerHomeScreen = () => {
         try {
             console.log('Fetching passenger services for:', currentUserId);
             const data = await api.services.getPassengerServices(currentUserId);
-            setServices(data || []);
+            // Ensure data is an array before setting state
+            if (Array.isArray(data)) {
+                setServices(data);
+            } else {
+                console.warn('API returned non-array data for services:', data);
+                setServices([]);
+            }
         } catch (error) {
             console.error(error);
             Alert.alert('Hata', 'Servisler yüklenemedi. Lütfen tekrar deneyin.');
