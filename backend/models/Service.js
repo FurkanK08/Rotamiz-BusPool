@@ -54,4 +54,9 @@ ServiceSchema.set('toJSON', {
     virtuals: true
 });
 
+// Database indexes for query performance
+ServiceSchema.index({ driver: 1 });
+ServiceSchema.index({ passengers: 1 });
+ServiceSchema.index({ 'attendance.date': 1, 'attendance.passengerId': 1 });
+
 module.exports = mongoose.model('Service', ServiceSchema);

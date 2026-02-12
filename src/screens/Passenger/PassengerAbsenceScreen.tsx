@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, FlatList } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
@@ -13,21 +13,19 @@ export const PassengerAbsenceScreen = () => {
     const [selectedDates, setSelectedDates] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Generate next 14 days
-    const generateDays = () => {
-        const days = [];
+    // Generate next 30 days (memoized to avoid recalculation on every render)
+    const days = useMemo(() => {
+        const result = [];
         const today = new Date();
         for (let i = 0; i < 30; i++) {
             const d = new Date(today);
             d.setDate(today.getDate() + i);
             const dateStr = d.toISOString().split('T')[0];
             const dayName = d.toLocaleDateString('tr-TR', { weekday: 'short', day: 'numeric', month: 'short' });
-            days.push({ date: dateStr, label: dayName, fullDate: d });
+            result.push({ date: dateStr, label: dayName, fullDate: d });
         }
-        return days;
-    };
-
-    const days = generateDays();
+        return result;
+    }, []);
 
     const toggleDate = (date: string) => {
         if (selectedDates.includes(date)) {

@@ -5,9 +5,8 @@ import { DirectionsService } from '../services/googleMaps/DirectionsService';
 import { ETAService } from '../services/googleMaps/ETAService';
 import * as Location from 'expo-location';
 
-// Helper for interpolation (simple linear)
-// For production transparency, one might use react-native-maps-animated-marker or similar
-// But we will stick to a simple ref-based approach or state updates for now.
+// Minimum interval between route recalculations (ms)
+const ROUTE_THROTTLE_MS = 30000; // 30 seconds
 
 export const useLiveTracking = (serviceId: string, userId: string, initialUserLocation?: any) => {
     const [driverLocation, setDriverLocation] = useState<any>(null);
@@ -17,10 +16,14 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
     const [distance, setDistance] = useState<string | null>(null);
     const [isLoadingRoute, setIsLoadingRoute] = useState(false);
 
-    // Animated value for smooth marker movement
-    // We'll use a standard state for coordinates but could upgrade to Animated.ValueXY
-    // for true 60fps native driver animation if needed.
-    // For now, let's just react to state updates.
+    // Refs for throttling
+    const lastRouteCalcTime = useRef<number>(0);
+    const driverLocationRef = useRef<any>(null);
+    const passengerLocationRef = useRef<any>(null);
+
+    // Keep refs in sync with state
+    useEffect(() => { driverLocationRef.current = driverLocation; }, [driverLocation]);
+    useEffect(() => { passengerLocationRef.current = passengerLocation; }, [passengerLocation]);
 
     // 1. Initialize Passenger Location
     useEffect(() => {
@@ -31,11 +34,10 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== 'granted') return;
 
-                // Watch position for "Blue Dot"
                 subscription = await Location.watchPositionAsync(
                     {
                         accuracy: Location.Accuracy.High,
-                        distanceInterval: 10, // Update every 10 meters
+                        distanceInterval: 10,
                     },
                     (loc) => {
                         setPassengerLocation({
@@ -56,7 +58,7 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
         return () => {
             if (subscription) subscription.remove();
         };
-    }, []); // Run once
+    }, []);
 
     // 2. Socket Connection & Driver Updates
     useEffect(() => {
@@ -66,7 +68,6 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
         socketService.joinService(serviceId);
 
         const handleLocationUpdate = (newLocation: any) => {
-            console.log('📍 Driver Update:', newLocation);
             setDriverLocation(newLocation);
         };
 
@@ -77,52 +78,58 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
         };
     }, [serviceId]);
 
-    // 3. Route & ETA Calculation (Debounced)
-    // We only recalculate route if driver moves significantly or passenger moves significantly
-    // For simplicity, we'll recirculate on significant driver updates or periodically.
-    useEffect(() => {
-        if (!driverLocation || !passengerLocation) return;
+    // 3. Route & ETA Calculation (Throttled)
+    // Uses a fixed interval instead of reacting to every location change
+    const updateRouteAndEta = useCallback(async () => {
+        const driver = driverLocationRef.current;
+        const passenger = passengerLocationRef.current;
 
-        // Debounce logic or simple interval could be applied here.
-        // For now, let's fetch route if we don't have one, or update ETA periodically.
+        if (!driver || !passenger) return;
 
-        const updateRouteAndEta = async () => {
-            setIsLoadingRoute(true);
+        // Throttle: skip if called too recently
+        const now = Date.now();
+        if (now - lastRouteCalcTime.current < ROUTE_THROTTLE_MS) return;
+        lastRouteCalcTime.current = now;
 
-            // Fetch precise route from Google Directions
-            const routeResult = await DirectionsService.getRoute(driverLocation, passengerLocation);
+        setIsLoadingRoute(true);
+
+        try {
+            // Fetch route from Google Directions
+            const routeResult = await DirectionsService.getRoute(driver, passenger);
             if (routeResult) {
                 setRouteCoordinates(routeResult.points);
-                // setDistance(routeResult.distance); // Use Distance Matrix for better traffic data
             }
 
-            // Fetch accurate ETA from Google Distance Matrix
-            const etaResult = await ETAService.getETA(driverLocation, passengerLocation);
+            // Fetch ETA from Google Distance Matrix
+            const etaResult = await ETAService.getETA(driver, passenger);
             if (etaResult) {
                 setEta(etaResult.duration);
                 setDistance(etaResult.distance);
             }
-
+        } catch (error) {
+            console.warn('Route/ETA calculation error:', error);
+        } finally {
             setIsLoadingRoute(false);
-        };
+        }
+    }, []);
 
-        // Initial fetch
-        updateRouteAndEta();
+    useEffect(() => {
+        if (!driverLocation || !passengerLocation) return;
 
-        // Set up an interval to refresh ETA every 60 seconds (save API quotas)
+        // Initial calculation (bypass throttle for first load)
+        if (lastRouteCalcTime.current === 0) {
+            lastRouteCalcTime.current = Date.now();
+            updateRouteAndEta();
+        }
+
+        // Refresh ETA every 60 seconds
         const interval = setInterval(updateRouteAndEta, 60000);
 
         return () => clearInterval(interval);
-
     }, [
-        // Dependencies: if these change significantly, we might want to re-fetch
-        // But to save API calls, maybe only trigger manually or on large shifts
-        // For this demo, let's rely on the interval and initial load
-        // We add them to deps to trigger on first valid pair
-        driverLocation?.latitude,
-        driverLocation?.longitude,
-        passengerLocation?.latitude,
-        passengerLocation?.longitude
+        // Only re-run effect when we get first valid pair
+        !!driverLocation,
+        !!passengerLocation
     ]);
 
     return {
