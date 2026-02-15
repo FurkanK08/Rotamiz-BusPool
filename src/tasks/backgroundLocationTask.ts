@@ -35,7 +35,8 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: any) => {
                     // Ensure socket is connected (it might be disconnected in background)
                     if (!socketService.socket?.connected) {
                         console.log('[BackgroundLocation] Socket disconnected, attempting reconnect...');
-                        socketService.connect();
+                        const token = await AsyncStorage.getItem('auth_token');
+                        socketService.connect(token || undefined);
                         // Give it a moment or just emit (socket.io buffers usually)
                     }
 

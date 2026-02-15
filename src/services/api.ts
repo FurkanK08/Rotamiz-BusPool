@@ -134,7 +134,9 @@ export const api = {
                     headers,
                     body: JSON.stringify({ driverId, name, plate, schedules, destination }),
                 });
-                return await response.json();
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.msg || 'Servis oluşturulamadı');
+                return data;
             } catch (error) {
                 console.error('Create Service Error:', error);
                 throw error;
@@ -147,7 +149,11 @@ export const api = {
                 const headers = await getAuthHeaders();
                 const url = `${API_URL}/services/driver/${driverId}`;
                 const response = await fetch(url, { headers });
+                // O6 FIX: Read body once, then check status
                 const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.msg || 'Sürücü servisleri alınamadı');
+                }
                 AppLogger.apiResponse(url, response.status, data);
                 return data;
             } catch (error) {
@@ -164,7 +170,9 @@ export const api = {
                     headers,
                     body: JSON.stringify(data),
                 });
-                return await response.json();
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.msg || 'Servis güncellenemedi');
+                return result;
             } catch (error) {
                 console.error('Update Service Error:', error);
                 throw error;
@@ -178,7 +186,9 @@ export const api = {
                     method: 'DELETE',
                     headers
                 });
-                return await response.json();
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.msg || 'Servis silinemedi');
+                return data;
             } catch (error) {
                 console.error('Delete Service Error:', error);
                 throw error;
@@ -193,7 +203,10 @@ export const api = {
                     headers,
                     body: JSON.stringify({ serviceId, passengerId }),
                 });
-                return await response.json();
+                const data = await response.json();
+                // M3 FIX: Check response status
+                if (!response.ok) throw new Error(data.msg || 'Yolcu çıkarılamadı');
+                return data;
             } catch (error) {
                 console.error('Remove Passenger Error:', error);
                 throw error;
@@ -271,6 +284,19 @@ export const api = {
             }
         },
 
+        getAttendance: async (serviceId: string, date: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/services/${serviceId}/attendance?date=${date}`, {
+                    headers,
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Get Attendance Error:', error);
+                throw error;
+            }
+        },
+
         updateAttendance: async (serviceId: string, passengerId: string, status: 'BINDI' | 'BINMEDI' | 'BEKLIYOR', date: string) => {
             try {
                 const headers = await getAuthHeaders();
@@ -312,6 +338,40 @@ export const api = {
                 return await response.json();
             } catch (error) {
                 console.error('Update Future Attendance Error:', error);
+                throw error;
+            }
+        },
+
+        // O3: Passenger voluntarily leaves a service
+        leaveService: async (serviceId: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/services/leave`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ serviceId }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.msg || 'Servisten ayrılamadı');
+                return data;
+            } catch (error) {
+                console.error('Leave Service Error:', error);
+                throw error;
+            }
+        },
+
+        // K4: Cleanup old attendance records
+        cleanupAttendance: async (serviceId: string) => {
+            try {
+                const headers = await getAuthHeaders();
+                const response = await fetch(`${API_URL}/services/attendance/cleanup`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({ serviceId }),
+                });
+                return await response.json();
+            } catch (error) {
+                console.error('Cleanup Attendance Error:', error);
                 throw error;
             }
         }
@@ -413,31 +473,6 @@ export const api = {
             } catch (error) {
                 console.error('Update Notification Preferences Error:', error);
                 throw error;
-            }
-        }
-    },
-
-    routing: {
-        getRoadRoute: async (startLat: number, startLon: number, endLat: number, endLon: number) => {
-            try {
-                // Using OSRM Public API (Demo Server - For testing only)
-                // In production, you should host your own OSRM or use a paid service like Mapbox/Google
-                const url = `http://router.project-osrm.org/route/v1/driving/${startLon},${startLat};${endLon},${endLat}?overview=full&geometries=geojson`;
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-                    return [];
-                }
-
-                // Convert [lon, lat] to { latitude, longitude }
-                return data.routes[0].geometry.coordinates.map((coord: number[]) => ({
-                    latitude: coord[1],
-                    longitude: coord[0]
-                }));
-            } catch (error) {
-                console.error('Routing Error:', error);
-                return [];
             }
         }
     }

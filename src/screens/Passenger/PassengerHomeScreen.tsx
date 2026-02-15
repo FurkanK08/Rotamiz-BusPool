@@ -4,9 +4,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import { Button } from '../../components/Button';
-import { api } from '../../services/api';
+import { api, tokenService } from '../../services/api';
 import { ServiceRoute } from '../../types';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const PassengerHomeScreen = () => {
     const navigation = useNavigation<any>();
@@ -14,6 +15,7 @@ export const PassengerHomeScreen = () => {
     const paramsUserId = route.params?.userId;
     const [currentUserId, setCurrentUserId] = useState<string | null>(paramsUserId || null);
     const { unreadCount } = useNotifications();
+    const { logout } = useAuth();
 
     const [services, setServices] = useState<ServiceRoute[]>([]);
     const [loading, setLoading] = useState(true);
@@ -24,8 +26,7 @@ export const PassengerHomeScreen = () => {
             if (paramsUserId) {
                 setCurrentUserId(paramsUserId);
             } else {
-                // Fallback to storage
-                const { tokenService } = require('../../services/api');
+                // M4 FIX: Use imported tokenService
                 const storedUser = await tokenService.getUser();
                 if (storedUser && storedUser._id) {
                     setCurrentUserId(storedUser._id);
@@ -108,33 +109,44 @@ export const PassengerHomeScreen = () => {
                     <Text style={styles.greeting}>Merhaba, Yolcu 👋</Text>
                     <Text style={styles.subtext}>Kayıtlı {services.length} servisiniz var.</Text>
                 </View>
-                <TouchableOpacity
-                    style={styles.settingsBtn}
-                    onPress={() => navigation.navigate('Notifications')}
-                >
-                    <View>
-                        <Text style={{ fontSize: 24 }}>🔔</Text>
-                        {unreadCount > 0 && (
-                            <View style={{
-                                position: 'absolute',
-                                right: -2,
-                                top: -2,
-                                backgroundColor: COLORS.error,
-                                borderRadius: 8,
-                                width: 16,
-                                height: 16,
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                borderWidth: 1.5,
-                                borderColor: COLORS.background
-                            }}>
-                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                                    {unreadCount > 9 ? '9+' : unreadCount}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    {/* M7 FIX: Logout button */}
+                    <TouchableOpacity
+                        onPress={() => Alert.alert('Çıkış', 'Çıkış yapmak istiyor musunuz?', [
+                            { text: 'İptal', style: 'cancel' },
+                            { text: 'Çıkış Yap', style: 'destructive', onPress: logout }
+                        ])}
+                    >
+                        <Text style={{ fontSize: 22 }}>🚪</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.settingsBtn}
+                        onPress={() => navigation.navigate('Notifications')}
+                    >
+                        <View>
+                            <Text style={{ fontSize: 24 }}>🔔</Text>
+                            {unreadCount > 0 && (
+                                <View style={{
+                                    position: 'absolute',
+                                    right: -2,
+                                    top: -2,
+                                    backgroundColor: COLORS.error,
+                                    borderRadius: 8,
+                                    width: 16,
+                                    height: 16,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    borderWidth: 1.5,
+                                    borderColor: COLORS.background
+                                }}>
+                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <ScrollView

@@ -2,7 +2,7 @@ import React from 'react';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { LoginScreen } from '../screens/Auth/LoginScreen';
 import { OTPScreen } from '../screens/Auth/OTPScreen';
@@ -20,6 +20,7 @@ import { PassengerSettingsScreen } from '../screens/Passenger/PassengerSettingsS
 import { NotificationsScreen } from '../screens/Shared/NotificationsScreen';
 import { NotificationSettingsScreen } from '../screens/Shared/NotificationSettingsScreen';
 import { COLORS } from '../constants/theme';
+import { useAuth } from '../context/AuthContext';
 
 export const navigationRef = createNavigationContainerRef();
 
@@ -30,6 +31,28 @@ const Tab = createBottomTabNavigator();
 const TabIcon = ({ focused, name }: { focused: boolean, name: string }) => (
     <Text style={{ fontSize: 24, opacity: focused ? 1 : 0.5 }}>{name}</Text>
 );
+
+// --- LOADING SCREEN ---
+const LoadingScreen = () => (
+    <View style={loadingStyles.container}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={loadingStyles.text}>Yükleniyor...</Text>
+    </View>
+);
+
+const loadingStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: COLORS.background,
+    },
+    text: {
+        marginTop: 12,
+        color: COLORS.textLight,
+        fontSize: 14,
+    },
+});
 
 // --- DRIVER TABS ---
 const DriverTabs = () => {
@@ -109,9 +132,24 @@ const PassengerTabs = () => {
 };
 
 export const RootNavigator = () => {
+    const { userId, role, isLoading } = useAuth();
+
+    // Determine initial route based on restored session
+    const getInitialRouteName = () => {
+        if (!userId) return 'Login';
+        if (role === 'DRIVER') return 'DriverDashboard';
+        if (role === 'PASSENGER') return 'PassengerHome';
+        return 'Login';
+    };
+
+    if (isLoading) {
+        return <LoadingScreen />;
+    }
+
     return (
         <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
+                initialRouteName={getInitialRouteName()}
                 screenOptions={{
                     headerShown: false,
                     contentStyle: { backgroundColor: COLORS.background },

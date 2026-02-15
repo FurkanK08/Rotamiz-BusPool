@@ -25,11 +25,19 @@ const writeLog = (message) => {
 const requestLogger = (req, res, next) => {
     const startTime = Date.now();
 
-    // Log request
+    // Log request (security: mask sensitive headers)
+    const safeHeaders = { ...req.headers };
+    if (safeHeaders.authorization) {
+        safeHeaders.authorization = 'Bearer ***MASKED***';
+    }
+    if (safeHeaders.cookie) {
+        safeHeaders.cookie = '***MASKED***';
+    }
+
     writeLog(`━━━ INCOMING REQUEST ━━━`);
     writeLog(`Method: ${req.method}`);
     writeLog(`Path: ${req.originalUrl}`);
-    writeLog(`Headers: ${JSON.stringify(req.headers)}`);
+    writeLog(`Headers: ${JSON.stringify(safeHeaders)}`);
     writeLog(`Body: ${JSON.stringify(req.body)}`);
     writeLog(`IP: ${req.ip}`);
 

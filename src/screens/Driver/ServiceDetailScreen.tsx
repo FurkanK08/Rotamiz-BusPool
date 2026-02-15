@@ -139,10 +139,14 @@ export const ServiceDetailScreen = () => {
                 </View>
                 <TouchableOpacity
                     style={styles.codeContainer}
-                    onPress={() => {
-                        // In a real app we'd use Clipboard.setString(service.code)
-                        // For now just alert
-                        Alert.alert('Kopyalandı', `Davet kodu panoya kopyalandı: ${service.code}`);
+                    onPress={async () => {
+                        try {
+                            const { Clipboard } = require('react-native');
+                            Clipboard.setString(service.code);
+                            Alert.alert('Kopyalandı', `Davet kodu panoya kopyalandı: ${service.code}`);
+                        } catch {
+                            Alert.alert('Davet Kodu', `${service.code}`);
+                        }
                     }}
                 >
                     <Text style={styles.codeLabel}>KOD (Kopyala)</Text>

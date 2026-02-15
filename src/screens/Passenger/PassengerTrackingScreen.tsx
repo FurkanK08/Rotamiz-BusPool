@@ -128,11 +128,12 @@ export const PassengerTrackingScreen = () => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            if (!userId || !serviceId) return;
-                            await api.services.removePassenger(serviceId, userId);
+                            if (!serviceId) return;
+                            // O3 FIX: Use leaveService endpoint (passenger self-remove)
+                            await api.services.leaveService(serviceId);
                             navigation.navigate('PassengerHome');
-                        } catch (error) {
-                            console.error(error);
+                        } catch (error: any) {
+                            Alert.alert('Hata', error.message || 'Servisten ayrılınamadı');
                         }
                     }
                 }

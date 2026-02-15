@@ -2,7 +2,7 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 
 // Get API Key from various possible sources
-const getGoogleMapsApiKey = () => {
+export const getGoogleMapsApiKey = () => {
     // Priority 1: .env file (exposed via babel-plugin-dotenv-import or similar)
     if (process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY) {
         return process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;

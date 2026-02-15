@@ -33,15 +33,10 @@ const ServiceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
     }],
-    attendance: [{
-        date: String, // YYYY-MM-DD
-        passengerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-        status: { type: String, enum: ['BINDI', 'BINMEDI', 'BEKLIYOR', 'GELMEYECEK'], default: 'BEKLIYOR' }
-    }],
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    },
+    // Attendance is now in a separate collection 'Attendance'
+    // This improves scalability and performance
+}, {
+    timestamps: true  // Adds createdAt + updatedAt automatically
 });
 
 // Add virtual field for 'id' to match frontend expectations

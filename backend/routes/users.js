@@ -31,7 +31,7 @@ router.put('/:id/location', authMiddleware, async (req, res) => {
 });
 
 // Update user push token
-router.post('/push-token', async (req, res) => {
+router.post('/push-token', authMiddleware, async (req, res) => {
     const { userId, pushToken } = req.body;
     try {
         await User.findByIdAndUpdate(userId, { pushToken });
@@ -44,7 +44,7 @@ router.post('/push-token', async (req, res) => {
 // @route   GET api/users/:id
 // @desc    Get user profile
 // @access  Private
-router.get('/:id', async (req, res) => {
+router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const user = await User.findById(req.params.id).select('-__v');
         if (!user) {
@@ -60,7 +60,7 @@ router.get('/:id', async (req, res) => {
 // @route   PUT api/users/:id/notification-preferences
 // @desc    Update notification preferences
 // @access  Private
-router.put('/:id/notification-preferences', async (req, res) => {
+router.put('/:id/notification-preferences', authMiddleware, async (req, res) => {
     try {
         const { notificationPreferences } = req.body;
         console.log(`[PUT /users/:id/notification-preferences] Updating for user: ${req.params.id}`);

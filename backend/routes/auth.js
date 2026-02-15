@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const { generateToken } = require('../middleware/auth');
+const { generateToken, authMiddleware } = require('../middleware/auth');
 
 // @route   POST api/auth/login
 // @desc    Login or Register user by phone number
@@ -48,10 +48,12 @@ router.post('/login', async (req, res) => {
 });
 
 // @route   PUT api/auth/profile
-// @desc    Update user profile (Name, Role)
-// @access  Public (Should be protected in Prod)
-router.put('/profile', async (req, res) => {
-    const { userId, name, role } = req.body;
+// @desc    Update user profile (Name, Role - first time setup only)
+// @access  Private (authenticated user can update OWN profile only)
+router.put('/profile', authMiddleware, async (req, res) => {
+    // K2 FIX: userId comes from JWT, not from body
+    const { name, role } = req.body;
+    const userId = req.user.id;
 
     try {
         let user = await User.findById(userId);
@@ -61,13 +63,25 @@ router.put('/profile', async (req, res) => {
         }
 
         if (name) user.name = name;
-        if (role) user.role = role;
+
+        // K2 FIX: Role can only be set during initial profile setup (when no role is set yet)
+        // This prevents role escalation (e.g. PASSENGER -> ADMIN)
+        if (role && (!user.role || user.role === 'PASSENGER')) {
+            const allowedRoles = ['PASSENGER', 'DRIVER'];
+            if (allowedRoles.includes(role)) {
+                user.role = role;
+            }
+        }
 
         await user.save();
 
+        // Update token with new role
+        const newToken = generateToken(user._id, user.role);
+
         res.json({
             msg: 'Profile updated',
-            user
+            user,
+            token: newToken
         });
     } catch (err) {
         console.error(err.message);

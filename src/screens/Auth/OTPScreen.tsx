@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING } from '../../constants/theme';
 import { Input } from '../../components/Input';
@@ -84,7 +84,7 @@ export const OTPScreen = () => {
                     <Button
                         title="Tekrar Gönder"
                         variant="outline"
-                        onPress={() => { }}
+                        onPress={() => Alert.alert('Bilgi', 'OTP tekrar gönderme henüz aktif değil.')}
                         style={{ marginTop: SPACING.m }}
                     />
                 </View>

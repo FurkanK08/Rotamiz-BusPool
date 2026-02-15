@@ -66,9 +66,28 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => console.log('❌ MongoDB Connection Error:', err));
 
+// Socket.io Auth Middleware
+const jwt = require('jsonwebtoken');
+io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (!token) {
+        console.warn('Socket connection rejected: No token provided');
+        return next(new Error('Authentication required'));
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded.user;
+        next();
+    } catch (err) {
+        console.warn('Socket connection rejected: Invalid token');
+        return next(new Error('Invalid token'));
+    }
+});
+
 // Socket.io Logic
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+    console.log('User connected:', socket.id, '| userId:', socket.user?.id);
 
     // Join a specific service room (e.g., service ID)
     socket.on('joinService', (serviceId) => {

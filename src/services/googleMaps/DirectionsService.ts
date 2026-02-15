@@ -1,4 +1,4 @@
-import googleMapsClient from './GoogleMapsClient';
+import googleMapsClient, { getGoogleMapsApiKey } from './GoogleMapsClient';
 
 
 export interface RouteStep {
@@ -11,6 +11,7 @@ export interface RouteResult {
     distance: string;
     duration: string;
     overviewPolyline: string;
+    waypointOrder: number[];
 }
 
 export const DirectionsService = {
@@ -19,6 +20,11 @@ export const DirectionsService = {
         destination: { latitude: number; longitude: number },
         waypoints?: { latitude: number; longitude: number }[]
     ): Promise<RouteResult | null> => {
+        if (!getGoogleMapsApiKey()) {
+            console.error('Google Maps API Key is MISSING. Route cannot be calculated.');
+            return null;
+        }
+
         try {
             const params: any = {
                 origin: `${origin.latitude},${origin.longitude}`,
@@ -62,6 +68,7 @@ export const DirectionsService = {
                 distance: (totalDistanceValue / 1000).toFixed(1) + ' km',
                 duration: Math.ceil(totalDurationValue / 60) + ' dk', // Minutes
                 overviewPolyline,
+                waypointOrder: route.waypoint_order || [],
             };
         } catch (error) {
             console.error('Directions Service Error:', error);

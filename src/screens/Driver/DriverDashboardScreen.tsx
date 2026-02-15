@@ -4,15 +4,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS, SPACING, SHADOWS } from '../../constants/theme';
 import { Button } from '../../components/Button';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { api } from '../../services/api';
+import { api, tokenService } from '../../services/api';
 import { ServiceRoute } from '../../types';
 import { useNotifications } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const DriverDashboardScreen = () => {
     const navigation = useNavigation<any>();
     const route = useRoute<any>();
     const paramsUserId = route.params?.userId;
     const { unreadCount } = useNotifications();
+    const { logout } = useAuth();
+    const [userName, setUserName] = useState('Kaptan');
 
     const [services, setServices] = useState<ServiceRoute[]>([]);
     const [loading, setLoading] = useState(true);
@@ -25,11 +28,12 @@ export const DriverDashboardScreen = () => {
             if (paramsUserId) {
                 setCurrentUserId(paramsUserId);
             } else {
-                // Fallback to storage
-                const { tokenService } = require('../../services/api');
+                // M4 FIX: Use imported tokenService instead of require()
                 const storedUser = await tokenService.getUser();
                 if (storedUser && storedUser._id) {
                     setCurrentUserId(storedUser._id);
+                    // D6 FIX: Show user's actual name
+                    if (storedUser.name) setUserName(storedUser.name);
                 }
             }
         };
@@ -122,36 +126,47 @@ export const DriverDashboardScreen = () => {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.greeting}>Merhaba, Kaptan 👋</Text>
+                    <Text style={styles.greeting}>Merhaba, {userName} 👋</Text>
                     <Text style={styles.subtext}>Bugün {services.length} kayıtlı servisiniz var.</Text>
                 </View>
-                <TouchableOpacity
-                    style={styles.profileButton}
-                    onPress={() => navigation.navigate('Notifications')}
-                >
-                    <View>
-                        <Text style={{ fontSize: 24 }}>🔔</Text>
-                        {unreadCount > 0 && (
-                            <View style={{
-                                position: 'absolute',
-                                right: -2,
-                                top: -2,
-                                backgroundColor: COLORS.error,
-                                borderRadius: 8,
-                                width: 16,
-                                height: 16,
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                borderWidth: 1.5,
-                                borderColor: COLORS.white
-                            }}>
-                                <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
-                                    {unreadCount > 9 ? '9+' : unreadCount}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    {/* M7 FIX: Logout button */}
+                    <TouchableOpacity
+                        onPress={() => Alert.alert('Çıkış', 'Çıkış yapmak istiyor musunuz?', [
+                            { text: 'İptal', style: 'cancel' },
+                            { text: 'Çıkış Yap', style: 'destructive', onPress: logout }
+                        ])}
+                    >
+                        <Text style={{ fontSize: 22 }}>🚪</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.profileButton}
+                        onPress={() => navigation.navigate('Notifications')}
+                    >
+                        <View>
+                            <Text style={{ fontSize: 24 }}>🔔</Text>
+                            {unreadCount > 0 && (
+                                <View style={{
+                                    position: 'absolute',
+                                    right: -2,
+                                    top: -2,
+                                    backgroundColor: COLORS.error,
+                                    borderRadius: 8,
+                                    width: 16,
+                                    height: 16,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    borderWidth: 1.5,
+                                    borderColor: COLORS.white
+                                }}>
+                                    <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <FlatList

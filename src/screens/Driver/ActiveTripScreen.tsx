@@ -38,6 +38,7 @@ export const ActiveTripScreen = () => {
     const {
         location,
         passengers,
+        activePassengers,
         routeCoordinates,
         elapsedSeconds,
         attendance,
@@ -210,11 +211,61 @@ export const ActiveTripScreen = () => {
 
     const handleAttendance = async (passengerId: string, status: 'BINDI' | 'BINMEDI') => {
         try {
+            console.log(`[UI] Marking ${passengerId} as ${status}`);
             const date = new Date().toISOString().split('T')[0];
-            const updatedList = await api.services.updateAttendance(serviceId, passengerId, status, date);
-            setAttendance(updatedList);
+
+            // Optimistic update
+            setAttendance(prev => {
+                // Ensure we are working with string ID
+                const pId = typeof passengerId === 'object' ? (passengerId as any)._id : passengerId;
+
+                // Create temp record
+                const tempRecord = {
+                    passengerId: pId,
+                    serviceId,
+                    status,
+                    date,
+                    _id: 'temp-' + Date.now()
+                };
+
+                const index = prev.findIndex(item => {
+                    const itemPId = typeof item.passengerId === 'object' ? item.passengerId._id : item.passengerId;
+                    return itemPId.toString() === pId.toString() && item.date === date;
+                });
+
+                if (index > -1) {
+                    const newArr = [...prev];
+                    newArr[index] = { ...newArr[index], status };
+                    return newArr;
+                } else {
+                    return [...prev, tempRecord];
+                }
+            });
+
+            const updatedRecord = await api.services.updateAttendance(serviceId, passengerId, status, date);
+            console.log('[UI] Server response:', updatedRecord);
+
+            // Re-sync with server response
+            setAttendance(prev => {
+                const pId = typeof passengerId === 'object' ? (passengerId as any)._id : passengerId;
+                const index = prev.findIndex(item => {
+                    const itemPId = typeof item.passengerId === 'object' ? item.passengerId._id : item.passengerId;
+                    return itemPId.toString() === pId.toString() && item.date === date;
+                });
+
+                if (index > -1) {
+                    const newArr = [...prev];
+                    newArr[index] = updatedRecord;
+                    return newArr;
+                } else {
+                    return [...prev, updatedRecord];
+                }
+            });
+
         } catch (e) {
+            console.error(e);
             Alert.alert('Hata', 'Durum güncellenemedi');
+            // Revert on error could be implemented here
         }
     };
 
@@ -226,26 +277,27 @@ export const ActiveTripScreen = () => {
 
     // Filter and Sort Passengers
     const filteredPassengers = useMemo(() => {
-        let result = passengers;
+        // Use activePassengers from hook (which is TSP sorted and filtered by attendance)
+        // If we want to show ALL passengers (including BINDI/GELMEYECEK) in the list, we should use 'passengers'
+        // But the user requested "map operations... incorrect details".
+        // Usually driver wants to see who is NEXT.
+
+        let result = activePassengers;
+
+        // If we want to show completed passengers at the bottom, we can merge
+        // But for now, let's stick to the active ones for the "Next Stop" logic
+        // Or better: Show Active first (Sorted), then Others.
+
+        // Let's use the 'passengers' list but sort it: Active (TSP Order) -> BINDI/Others
+        // Actually, 'activePassengers' is strictly "Those who need to be picked up".
+        // Let's rely on that for the main view.
+
         if (searchText) {
             result = result.filter(p => p.name.toLowerCase().includes(searchText.toLowerCase()));
         }
 
-        if (!location?.coords || !result.length) return result;
-        const { latitude, longitude } = location.coords;
-
-        return [...result].sort((a, b) => {
-            if (!a.pickupLocation || !b.pickupLocation) return 0;
-            const distA = getDistance(latitude, longitude, a.pickupLocation.latitude, a.pickupLocation.longitude);
-            const distB = getDistance(latitude, longitude, b.pickupLocation.latitude, b.pickupLocation.longitude);
-            const aAbsent = getPassengerStatus(a._id) === 'GELMEYECEK';
-            const bAbsent = getPassengerStatus(b._id) === 'GELMEYECEK';
-            if (aAbsent && !bAbsent) return 1;
-            if (!aAbsent && bAbsent) return -1;
-            return distA - distB;
-        });
-
-    }, [passengers, location, searchText, attendance]);
+        return result;
+    }, [activePassengers, searchText]);
 
 
     const handleRecenter = () => {
@@ -274,7 +326,7 @@ export const ActiveTripScreen = () => {
                         role="DRIVER"
                         driverLocation={location.coords}
                         routeCoordinates={routeCoordinates}
-                        passengers={passengers}
+                        passengers={activePassengers}
                     />
                 ) : (
                     <View style={styles.loadingContainer}>

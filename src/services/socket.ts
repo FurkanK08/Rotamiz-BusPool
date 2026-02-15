@@ -13,7 +13,7 @@ const SOCKET_URL = getSocketUrl();
 class SocketService {
     socket: Socket | null = null;
 
-    connect() {
+    connect(token?: string) {
         if (!this.socket) {
             this.socket = io(SOCKET_URL, {
                 reconnection: true,
@@ -21,6 +21,7 @@ class SocketService {
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,
                 timeout: 20000,
+                auth: token ? { token } : undefined,
             });
 
             this.socket.on('connect', () => {
@@ -103,6 +104,12 @@ class SocketService {
                 this.socket?.off('driverReceivePassengerLocation', callback);
             }
         };
+    }
+
+    // O4 FIX: Force reconnect with a new token
+    reconnect(token?: string) {
+        this.disconnect();
+        this.connect(token);
     }
 
     disconnect() {

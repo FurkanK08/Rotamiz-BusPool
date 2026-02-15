@@ -65,27 +65,35 @@ export const useLiveTracking = (serviceId: string, userId: string, initialUserLo
     useEffect(() => {
         if (!serviceId) return;
 
-        socketService.connect();
-        socketService.joinService(serviceId);
+        let locSub: any = null;
+        let stopSub: any = null;
+        let reqSub: any = null;
 
-        // Location Updates
-        const locSub = socketService.subscribeToLocationUpdates((newLocation) => {
-            setDriverLocation(newLocation);
-        });
+        const connectSocket = async () => {
+            const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+            const token = await AsyncStorage.getItem('auth_token');
+            socketService.connect(token || undefined);
+            socketService.joinService(serviceId);
 
-        // Service Stopped
-        const stopSub = socketService.subscribeToServiceStop(() => {
-            setIsServiceStopped(true);
-        });
+            // M6 FIX: Subscribe AFTER socket is connected
+            locSub = socketService.subscribeToLocationUpdates((newLocation) => {
+                setDriverLocation(newLocation);
+            });
 
-        // Location Request
-        const reqSub = socketService.subscribeToLocationRequest(() => {
-            const loc = passengerLocationRef.current;
-            if (loc && userId) {
-                console.log('[LiveTracking] Auto-sharing location per driver request');
-                socketService.sendPassengerLocation(serviceId, userId, loc);
-            }
-        });
+            stopSub = socketService.subscribeToServiceStop(() => {
+                setIsServiceStopped(true);
+            });
+
+            reqSub = socketService.subscribeToLocationRequest(() => {
+                const loc = passengerLocationRef.current;
+                if (loc && userId) {
+                    console.log('[LiveTracking] Auto-sharing location per driver request');
+                    socketService.sendPassengerLocation(serviceId, userId, loc);
+                }
+            });
+        };
+
+        connectSocket();
 
         return () => {
             locSub?.unsubscribe();
